@@ -1,27 +1,29 @@
 
-import streamlit as st
-from ui.widgets import inject_css
+import streamlit as st, json, os
+from ui.widgets import inject_css, card
 
-st.set_page_config(page_title="Notifications", page_icon="🔔", layout="wide")
 inject_css()
-
-if "notifications" not in st.session_state:
-    st.session_state.notifications = []
-if "dismissed" not in st.session_state:
-    st.session_state.dismissed = []
-
 st.title("Notifications Center")
 
-unread = [n for n in st.session_state.get("notifications", []) if n["id"] not in st.session_state.dismissed]
-hist = [n for n in st.session_state.get("notifications", []) if n["id"] in st.session_state.dismissed]
+data_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data", "notifications.json")
+try:
+    items = json.load(open(data_path))
+except Exception:
+    items = []
 
 st.subheader("Unread")
-for n in unread:
-    c1,c2 = st.columns([12,1])
-    with c1: st.markdown(f"- {n['text']}  \n  <span class='pill {n['pill']}'>{n['type']}</span>", unsafe_allow_html=True)
-    with c2:
-        if st.button("✕", key=f"notif_{n['id']}"): st.session_state.dismissed.append(n["id"])
+if not items:
+    st.caption("You're all caught up.")
+for i, n in enumerate(items):
+    text = n.get("text","")
+    ntype = n.get("type","General")
+    with card(None):
+        st.write(text)
+        st.caption(ntype)
 
 st.subheader("History")
-for n in hist:
-    st.markdown(f"- {n['text']}  \n  <span class='pill {n['pill']}'>{n['type']}</span>", unsafe_allow_html=True)
+st.caption("Shown for demo only.")
+for i, n in enumerate(items):
+    with card(None):
+        st.write(n.get("text",""))
+        st.caption(n.get("type","General"))

@@ -1,52 +1,123 @@
 
 import streamlit as st
-from typing import Callable, Optional
+from contextlib import contextmanager
 
 def inject_css():
-    st.markdown('''
-    <style>
-      .tile { border:1px solid #e6e6e6;border-radius:12px;padding:14px 16px;background:#fff;
-              box-shadow:0 1px 2px rgba(0,0,0,0.04);margin-bottom:12px; }
-      .muted { color:#6b7280; font-size:0.9rem; }
-      .kpi-title { font-size: 13px; color: #64748b; letter-spacing: .2px; margin: 0 0 6px 0; }
-      .kpi-value { font-size: 28px; line-height: 1.1; font-weight: 700; color: #0f172a; margin: 0; }
-      .kpi-sub { font-size: 12px; color: #64748b; }
-      .kpi-delta { display: inline-block; font-size: 12px; padding: 2px 8px; border-radius: 12px; margin-left: 8px; border: 1px solid; }
-      .kpi-delta.pos { color: #027a48; border-color: #a7f3d0; background: #ecfdf5; }
-      .kpi-delta.neg { color: #b42318; border-color: #fecaca; background: #fef2f2; }
-      .kpi-delta.neu { color: #334155; border-color: #e2e8f0; background: #f8fafc; }
-      .kpi-pill { padding: 4px 8px; font-size: 12px; border:1px solid #e2e8f0; border-radius:999px; color:#334155; background:#fff; }
-      .kpi-row-title { font-weight:600; color:#0f172a; margin-bottom:6px; }
-    </style>
-    ''', unsafe_allow_html=True)
+    st.markdown(
+        """
+        <style>
+          .cca-card {
+            background: #ffffff;
+            border: 1px solid rgba(0,0,0,0.07);
+            border-radius: 12px;
+            padding: 16px 18px;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.03);
+            margin-bottom: 12px;
+          }
+          .cca-kpi-band {
+            border: 1px solid rgba(0,0,0,0.07);
+            border-radius: 14px;
+            padding: 18px;
+            background: #fafbff;
+            margin-bottom: 16px;
+          }
+          .cca-kpi-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 24px;
+          }
+          .cca-kpi h4 {
+            font-size: 0.9rem;
+            color: #51607a;
+            margin: 0 0 6px 0;
+            font-weight: 600;
+          }
+          .cca-kpi .val {
+            font-size: 2rem;
+            line-height: 2.2rem;
+            font-weight: 800;
+            color: #0f172a;
+          }
+          .pill {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 999px;
+            font-size: 12px;
+            border: 1px solid rgba(0,0,0,0.08);
+            background: #f6f7fb;
+            color: #334155;
+            margin-left: 8px;
+            vertical-align: middle;
+          }
+          .pill.green { background: #eaf7ee; color: #166534; border-color: #bbdec5; }
+          .pill.red { background: #fdecec; color: #991b1b; border-color: #f3b4b4; }
+          .pill.gray { background: #f1f5f9; color: #334155; border-color: #e2e8f0;}
+          .banner {
+            background: #eef5ff;
+            border: 1px solid #dbeafe;
+            padding: 12px 14px;
+            border-radius: 8px;
+            color: #0f172a;
+            margin-bottom: 8px;
+          }
+          .x-right {
+            float: right;
+            color: #475569;
+            cursor: pointer;
+          }
+        </style>
+        """,
+        unsafe_allow_html=True
+    )
 
-def section(title:str): st.subheader(title); st.write("")
+@contextmanager
+def card(title=None):
+    st.markdown('<div class="cca-card">', unsafe_allow_html=True)
+    if title:
+        st.subheader(title)
+    try:
+        yield
+    finally:
+        st.markdown("</div>", unsafe_allow_html=True)
 
-def tile(title:str, body:str=''):
-    st.markdown(f"<div class='tile'><strong>{title}</strong><br/><span class='muted'>{body}</span></div>", unsafe_allow_html=True)
+@contextmanager
+def kpi_band(title="At a glance"):
+    st.markdown('<div class="cca-kpi-band">', unsafe_allow_html=True)
+    if title:
+        st.markdown(f"### {title}")
+    try:
+        yield
+    finally:
+        st.markdown("</div>", unsafe_allow_html=True)
 
-def progress(label:str, pct:float): st.write(label); st.progress(int(max(0,min(100,pct))))
+def kpi(label, value, pill_text=None, pill_color="gray"):
+    st.markdown('<div class="cca-kpi">', unsafe_allow_html=True)
+    st.markdown(f"<h4>{label}</h4>", unsafe_allow_html=True)
+    st.markdown(f'<div class="val">{value}</div>', unsafe_allow_html=True)
+    if pill_text:
+        pc = pill_color if pill_color in {"green","red","gray"} else "gray"
+        st.markdown(f'<span class="pill {pc}">{pill_text}</span>', unsafe_allow_html=True)
+    st.markdown("</div>", unsafe_allow_html=True)
 
-def kpi_band(render: Callable, pills: Optional[list[str]] = None):
-    # ultra-light container: no borders, no wrappers that can render ghost bars
-    title_col, pill_col = st.columns([5,2])
-    with title_col:
-        st.markdown("<div class='kpi-row-title'>At a glance</div>", unsafe_allow_html=True)
-    with pill_col:
-        if pills:
-            pill_html = " ".join([f"<span class='kpi-pill'>{p}</span>" for p in pills])
-            st.markdown(f"<div style='text-align:right'>{pill_html}</div>", unsafe_allow_html=True)
-    c1, c2, c3, c4 = st.columns([1,1,1,1])
-    render(c1, c2, c3, c4)
+def chips(items):
+    if not items:
+        return
+    st.markdown(" ".join([f'<span class="pill gray">{t}</span>' for t in items]), unsafe_allow_html=True)
 
-def kpi_block(col, title:str, value:str, subtitle:str="", delta:Optional[str]=None, intent:str="neu"):
-    with col:
-        st.markdown(f"<div class='kpi-title'>{title}</div>", unsafe_allow_html=True)
-        c_val, c_badge = st.columns([1,1])
-        with c_val:
-            st.markdown(f"<div class='kpi-value'>{value}</div>", unsafe_allow_html=True)
-        with c_badge:
-            if delta:
-                st.markdown(f"<div class='kpi-delta {intent}' style='float:right'>{delta}</div>", unsafe_allow_html=True)
-        if subtitle:
-            st.markdown(f"<div class='kpi-sub'>{subtitle}</div>", unsafe_allow_html=True)
+@contextmanager
+def tile(title=None, subtitle=None):
+    with card(None):
+        if title:
+            st.markdown(f"**{title}**" + (f" — {subtitle}" if subtitle else ""))
+        yield
+
+def banner(text, category="info", show_close=False, key=None):
+    st.markdown('<div class="banner">', unsafe_allow_html=True)
+    if show_close:
+        st.markdown('<span class="x-right">✕</span>', unsafe_allow_html=True)
+    st.write(text)
+    st.markdown("</div>", unsafe_allow_html=True)
+
+def pills_row(pairs):
+    html = " ".join([f'<span class="pill {c if c in {"green","red","gray"} else "gray"}">{t}</span>' for t,c in pairs])
+    st.markdown(html, unsafe_allow_html=True)

@@ -1,64 +1,48 @@
 
 import streamlit as st
-from ui.widgets import inject_css, section, tile, progress, kpi_band, kpi_block
-from data_loader import load_seed
+from ui.widgets import inject_css, kpi_band, kpi, banner, card, pills_row
 
-st.set_page_config(page_title="Advisor Dashboard", page_icon="🧭", layout="wide")
 inject_css()
-data = load_seed()
+st.title("Advisor Dashboard")
 
-if "notifications" not in st.session_state:
-    st.session_state.notifications = [
-        {"id": 1, "type": "Compliance", "text": "Upload signed Disclosure before scheduling tours."},
-        {"id": 2, "type": "Financial", "text": "Confirm Medicaid rollover during financial review."},
-        {"id": 3, "type": "General", "text": "Keep intake notes date-stamped with initials."}
-    ]
-if "dismissed" not in st.session_state:
-    st.session_state.dismissed = []
+with kpi_band("At a glance"):
+    col1, col2, col3, col4 = st.columns([1,1,1,1.2])
+    with col1:
+        kpi("New leads (today)", "5", "+2 vs yesterday", "green")
+    with col2:
+        kpi("Assigned leads", "12", "+1 this week", "green")
+    with col3:
+        kpi("Active cases", "3", "-1 since Fri", "red")
+    with col4:
+        st.markdown("#### MTD vs goal")
+        st.markdown("### $20,500 / $40,000")
+        pills_row([("51% of goal","gray")])
 
-adv = data["advisors"][0]
-mtd = sum(p["fee_amount"] for p in data["placements"] if p["advisor_id"] == adv["id"])
-goal = adv["goal_monthly"]
-pct = 0 if goal == 0 else int((mtd/goal)*100)
+banner("Upload signed Disclosure before scheduling tours.  [Compliance]", "info", show_close=True)
+banner("Confirm Medicaid rollover during financial review.  [Financial]", "info", show_close=True)
+banner("Keep intake notes date-stamped with initials.  [General]", "info", show_close=True)
 
-def render_kpis(c1, c2, c3, c4):
-    kpi_block(c1, "New leads (today)", "5", delta="+2 vs yesterday", intent="pos")
-    kpi_block(c2, "Assigned leads", "12", delta="+1 this week", intent="pos")
-    kpi_block(c3, "Active cases", str(len(data["clients"])), delta="−1 since Fri", intent="neg")
-    kpi_block(c4, "MTD vs goal", f"${mtd:,.0f} / ${goal:,.0f}", subtitle=f"{pct}% achieved", delta=f"{pct}% of goal", intent="neu")
-
-kpi_band(render_kpis, pills=["This week: 2 placements", "Pending: $15,500", "Tours booked: 3"])
-
-remaining = [n for n in st.session_state.notifications if n["id"] not in st.session_state.dismissed]
-for n in remaining:
-    col_text, col_x = st.columns([12,1])
-    with col_text:
-        st.info(n["text"])
-    with col_x:
-        if st.button("✕", key=f"dismiss_{n['id']}"): st.session_state.dismissed.append(n["id"])
-
-left, right = st.columns([1.05,1])
+left, right = st.columns([1,1])
 with left:
-    with st.expander("Tasks & Queues", expanded=True):
-        for t in ["Call lead John Doe","Follow up with client Jane","Prepare intake forms","Schedule case review","Complete assessment for Mary Johnson"]:
-            st.checkbox(t)
-    with st.expander("Communications", expanded=False):
-        st.write("**[Referral]** Harborview MC — Disclosure still pending.")
-        st.write("**[Family]** Johnson — Asked about Medicaid timeline.")
-        st.write("**[Community]** Cedar Grove — Tour confirmation needed.")
-        st.caption("Action-oriented comms. Outlook/Teams integration later.")
-    with st.expander("Pipeline by Workflow Stage", expanded=False):
-        progress("Lead Received", 70); progress("Intake", 55); progress("Case Management", 25); progress("Placement", 40)
-
+    with card("Tasks & Queues"):
+        tasks = ["Call lead John Doe", "Follow up with client Jane", "Prepare intake forms",
+                 "Schedule case review", "Complete assessment for Mary Johnson"]
+        for t in tasks:
+            st.checkbox(t, value=False)
+    with card("Communications"):
+        st.write("[Referral] Harborview MC — Disclosure still pending.")
+    with card("Pipeline by Workflow Stage"):
+        st.progress(0.62)
 with right:
-    section("Advisor Workflows")
-    st.markdown("**Lead → Intake**")
-    tile("Lead Received","Call client and start intake (~30 min). Upload disclosure before tours.")
-    tile("Client Intake","Complete intake in CRM. Keep notes date-stamped.")
-    st.markdown("**Case Management → Search**")
-    tile("Case Management","Discuss barriers, discharge date, log contact.")
-    tile("AL/MC Search","Submit discovery request via CRM. DFS adds to grid.")
-    st.markdown("**Decision → Transition → Invoice**")
-    tile("Financial Review","Discuss Medicaid rollover, budget. Log in CRM.")
-    tile("Transition to New Home","Schedule move-in within 5 and 30 days post move.")
-    tile("Invoice","Send invoice to admin within 3 days. No contract.")
+    st.subheader("Advisor Workflows")
+    with card("Lead → Intake"):
+        with card("Lead Received"):
+            st.caption("Call client and start intake (~30 min). Upload disclosure before tours.")
+        with card("Client Intake"):
+            st.caption("Complete intake in CRM. Keep notes date-stamped.")
+    with card("Case Management → Search"):
+        with card("Case Management"):
+            st.caption("Discuss barriers, discharge date, log contact.")
+    with card("Decision → Transition → Invoice"):
+        with card("Financial Review"):
+            st.caption("Discuss Medicaid rollover, budget. Log in CRM.")
