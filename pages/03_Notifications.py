@@ -1,29 +1,25 @@
 
-import streamlit as st, json, os
-from ui.widgets import inject_css, card
+import streamlit as st
+from ui.widgets import inject_css
 
 inject_css()
-st.title("Notifications Center")
+st.markdown("## Notifications Center")
 
-data_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data", "notifications.json")
-try:
-    items = json.load(open(data_path))
-except Exception:
-    items = []
+st.session_state.setdefault("notice_history", [])
+st.session_state.setdefault("notices", [
+    {"text":"Upload signed Disclosure before scheduling tours.", "type":"Compliance"},
+    {"text":"Confirm Medicaid rollover during financial review.", "type":"Financial"},
+    {"text":"Keep intake notes date-stamped with initials.", "type":"General"},
+])
 
-st.subheader("Unread")
-if not items:
-    st.caption("You're all caught up.")
-for i, n in enumerate(items):
-    text = n.get("text","")
-    ntype = n.get("type","General")
-    with card(None):
-        st.write(text)
-        st.caption(ntype)
+st.markdown("### Unread")
+for n in st.session_state["notices"]:
+    st.write(n["text"])
+    st.caption(n["type"])
 
-st.subheader("History")
-st.caption("Shown for demo only.")
-for i, n in enumerate(items):
-    with card(None):
-        st.write(n.get("text",""))
-        st.caption(n.get("type","General"))
+st.markdown("### History")
+if not st.session_state["notice_history"]:
+    st.caption("Shown for demo only.")
+for n in st.session_state["notice_history"]:
+    st.write(n["text"])
+    st.caption(n["type"])

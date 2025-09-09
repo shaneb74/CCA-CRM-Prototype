@@ -1,123 +1,56 @@
 
 import streamlit as st
-from contextlib import contextmanager
+
+# Minimal, battle-tested helpers (no emojis, no external deps)
 
 def inject_css():
     st.markdown(
         """
         <style>
-          .cca-card {
-            background: #ffffff;
-            border: 1px solid rgba(0,0,0,0.07);
-            border-radius: 12px;
-            padding: 16px 18px;
+        /* Global tweak */
+        .block-container{padding-top:2rem;max-width:1200px;}
+        /* At-a-glance panel */
+        .glance-card {
+            border:1px solid #e6e6e6;
+            border-radius:14px;
+            padding:18px 20px 8px 20px;
+            background:#fafafa;
             box-shadow: 0 1px 2px rgba(0,0,0,0.03);
-            margin-bottom: 12px;
-          }
-          .cca-kpi-band {
-            border: 1px solid rgba(0,0,0,0.07);
-            border-radius: 14px;
-            padding: 18px;
-            background: #fafbff;
-            margin-bottom: 16px;
-          }
-          .cca-kpi-grid {
-            display: grid;
-            grid-template-columns: repeat(4, 1fr);
-            gap: 24px;
-          }
-          .cca-kpi h4 {
-            font-size: 0.9rem;
-            color: #51607a;
-            margin: 0 0 6px 0;
-            font-weight: 600;
-          }
-          .cca-kpi .val {
-            font-size: 2rem;
-            line-height: 2.2rem;
-            font-weight: 800;
-            color: #0f172a;
-          }
-          .pill {
-            display: inline-block;
-            padding: 2px 8px;
-            border-radius: 999px;
-            font-size: 12px;
-            border: 1px solid rgba(0,0,0,0.08);
-            background: #f6f7fb;
-            color: #334155;
-            margin-left: 8px;
-            vertical-align: middle;
-          }
-          .pill.green { background: #eaf7ee; color: #166534; border-color: #bbdec5; }
-          .pill.red { background: #fdecec; color: #991b1b; border-color: #f3b4b4; }
-          .pill.gray { background: #f1f5f9; color: #334155; border-color: #e2e8f0;}
-          .banner {
-            background: #eef5ff;
-            border: 1px solid #dbeafe;
-            padding: 12px 14px;
-            border-radius: 8px;
-            color: #0f172a;
-            margin-bottom: 8px;
-          }
-          .x-right {
-            float: right;
-            color: #475569;
-            cursor: pointer;
-          }
+        }
+        .glance-title{font-weight:700;font-size:1.1rem;margin-bottom:.35rem;}
+        .kpi {
+            display:flex;flex-direction:column;gap:.25rem;
+            min-width: 200px;
+        }
+        .kpi-label { color:#666; font-size:.90rem; }
+        .kpi-value { font-size:1.6rem; font-weight:800; letter-spacing:.3px;}
+        .pill {
+            display:inline-block; padding:2px 8px; border-radius:999px;
+            font-size:.75rem; border:1px solid;
+        }
+        .pill-good { color:#2c7a4b; border-color:#c6f6d5; background:#f0fff4;}
+        .pill-warn { color:#975a16; border-color:#fbd38d; background:#fffbeb;}
+        .pill-bad  { color:#9b2c2c; border-color:#fed7d7; background:#fff5f5;}
+        .note {
+            background:#eef6ff; border:1px solid #dbeafe; border-radius:10px;
+            padding:10px 12px; margin-bottom:8px;
+        }
+        .note X {float:right}
+        .card {
+            border:1px solid #eee; border-radius:12px; padding:14px 16px; background:#fff;
+        }
+        .small-muted {color:#6b7280; font-size:.85rem;}
         </style>
         """,
+        unsafe_allow_html=True,
+    )
+
+def chips(items):
+    """Render a row of tiny info chips (dicts with 'label' keys)."""
+    st.markdown(
+        " ".join([f"<span class='pill pill-good'>{st.html.escape(i['label']) if hasattr(st, 'html') else i['label']}</span>" for i in items]),
         unsafe_allow_html=True
     )
 
-@contextmanager
-def card(title=None):
-    st.markdown('<div class="cca-card">', unsafe_allow_html=True)
-    if title:
-        st.subheader(title)
-    try:
-        yield
-    finally:
-        st.markdown("</div>", unsafe_allow_html=True)
-
-@contextmanager
-def kpi_band(title="At a glance"):
-    st.markdown('<div class="cca-kpi-band">', unsafe_allow_html=True)
-    if title:
-        st.markdown(f"### {title}")
-    try:
-        yield
-    finally:
-        st.markdown("</div>", unsafe_allow_html=True)
-
-def kpi(label, value, pill_text=None, pill_color="gray"):
-    st.markdown('<div class="cca-kpi">', unsafe_allow_html=True)
-    st.markdown(f"<h4>{label}</h4>", unsafe_allow_html=True)
-    st.markdown(f'<div class="val">{value}</div>', unsafe_allow_html=True)
-    if pill_text:
-        pc = pill_color if pill_color in {"green","red","gray"} else "gray"
-        st.markdown(f'<span class="pill {pc}">{pill_text}</span>', unsafe_allow_html=True)
-    st.markdown("</div>", unsafe_allow_html=True)
-
-def chips(items):
-    if not items:
-        return
-    st.markdown(" ".join([f'<span class="pill gray">{t}</span>' for t in items]), unsafe_allow_html=True)
-
-@contextmanager
-def tile(title=None, subtitle=None):
-    with card(None):
-        if title:
-            st.markdown(f"**{title}**" + (f" — {subtitle}" if subtitle else ""))
-        yield
-
-def banner(text, category="info", show_close=False, key=None):
-    st.markdown('<div class="banner">', unsafe_allow_html=True)
-    if show_close:
-        st.markdown('<span class="x-right">✕</span>', unsafe_allow_html=True)
-    st.write(text)
-    st.markdown("</div>", unsafe_allow_html=True)
-
-def pills_row(pairs):
-    html = " ".join([f'<span class="pill {c if c in {"green","red","gray"} else "gray"}">{t}</span>' for t,c in pairs])
-    st.markdown(html, unsafe_allow_html=True)
+def tile(title:str, body:str=""):
+    st.markdown(f"<div class='card'><div style='font-weight:700'>{title}</div><div class='small-muted'>{body}</div></div>", unsafe_allow_html=True)

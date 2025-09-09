@@ -1,17 +1,9 @@
 
 import streamlit as st
+from ui.widgets import inject_css
 
-st.set_page_config(page_title="CCA CRM Prototype", page_icon="📊", layout="wide")
+st.set_page_config(page_title="Senior CRM Prototype", page_icon="📋", layout="wide")
+inject_css()
 
-st.title("Senior CRM Prototype")
-st.write("Use the sidebar to navigate. This landing page is intentionally simple.")
-
-st.markdown(
-    """
-    **Pages**
-    - Dashboard
-    - Advisor Workspace
-    - Notifications
-    - Client Record
-    """
-)
+st.markdown("# app")
+st.markdown("Use the left nav to open pages.")
