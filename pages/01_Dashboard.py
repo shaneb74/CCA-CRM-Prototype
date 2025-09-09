@@ -1,4 +1,5 @@
-# 01_Dashboard.py — full dashboard with colored task borders
+# 01_Dashboard.py — full dashboard with in-card Complete button
+# and urgency-colored left accent (Streamlit-safe)
 
 import streamlit as st
 from datetime import date, timedelta
@@ -15,21 +16,30 @@ st.set_page_config(
 def inject_css():
     st.markdown("""
     <style>
-    .page {max-width:1200px;margin:0 auto}
-    .card {background:#fff;border:1px solid #e9edf3;border-radius:16px;padding:18px}
-    .kpi {display:flex;flex-direction:column;gap:8px}
-    .kpi h3 {margin:0;font-size:14px;color:#6b7280;font-weight:600}
-    .kpi .num {font-size:28px;font-weight:700;color:#111827;line-height:1}
-    .sub {font-size:12px;color:#6b7280}
-    .badge {display:inline-block;font-size:11px;padding:2px 8px;border-radius:999px;border:1px solid rgba(0,0,0,0.06)}
-    .badge.green {background:#ecfdf5;color:#065f46}
-    .badge.red {background:#fef2f2;color:#991b1b}
-    .badge.yellow {background:#fffbeb;color:#92400e}
-    .alert {background:#f7fbff;border:1px solid #e1f0ff;border-radius:12px;padding:10px 12px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center}
-    .alert .tag {font-size:11px;color:#2563eb;background:#eaf2ff;border-radius:999px;padding:2px 8px;margin-left:6px}
-    .section-title{font-weight:700;font-size:18px;margin:8px 0}
-    .muted{color:#6b7280}
-    hr{border:none;border-top:1px solid #eef2f7;margin:8px 0 0}
+      .page {max-width:1200px;margin:0 auto}
+      .card {background:#fff;border:1px solid #e9edf3;border-radius:16px;padding:18px}
+      .kpi {display:flex;flex-direction:column;gap:8px}
+      .kpi h3 {margin:0;font-size:14px;color:#6b7280;font-weight:600}
+      .kpi .num {font-size:28px;font-weight:700;color:#111827;line-height:1}
+      .sub {font-size:12px;color:#6b7280}
+
+      .badge {display:inline-block;font-size:11px;padding:2px 8px;border-radius:999px;border:1px solid rgba(0,0,0,0.06)}
+      .badge.green {background:#ecfdf5;color:#065f46}
+      .badge.red {background:#fef2f2;color:#991b1b}
+      .badge.yellow {background:#fffbeb;color:#92400e}
+
+      .alert {background:#f7fbff;border:1px solid #e1f0ff;border-radius:12px;padding:10px 12px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center}
+      .alert .tag {font-size:11px;color:#2563eb;background:#eaf2ff;border-radius:999px;padding:2px 8px;margin-left:6px}
+      .section-title{font-weight:700;font-size:18px;margin:8px 0}
+
+      /* Task row scaffolding */
+      .task-row {display:flex;gap:12px;align-items:stretch;margin-bottom:10px;}
+      .task-accent {width:6px;border-radius:10px}
+      .task-card {flex:1;background:#fff;border:1px solid #e5e7eb;border-radius:12px;padding:12px 14px}
+      .task-title{font-weight:600;color:#111827;margin-bottom:2px}
+      .task-sub{font-size:12px;color:#6b7280}
+      .overdue{color:#b91c1c !important}
+      .btn-plain {background:#f3f4f6;border:1px solid #d1d5db;border-radius:8px;padding:6px 10px;font-size:13px}
     </style>
     """, unsafe_allow_html=True)
 
@@ -50,49 +60,48 @@ def alert_row(message, tag, key):
     with c2:
         st.button("✓", key=f"ack_{key}")
 
-# Priority + border colors
 PRIORITY_COLORS = {
-    "High": {"border": "#dc2626", "bg": "#fee2e2", "fg": "#991b1b"},
-    "Med":  {"border": "#f59e0b", "bg": "#fef9c3", "fg": "#92400e"},
-    "Low":  {"border": "#9ca3af", "bg": "#e5e7eb", "fg": "#374151"},
+    "High": {"accent": "#dc2626", "chip_bg": "#fee2e2", "chip_fg": "#991b1b"},
+    "Med":  {"accent": "#f59e0b", "chip_bg": "#fef9c3", "chip_fg": "#92400e"},
+    "Low":  {"accent": "#9ca3af", "chip_bg": "#e5e7eb", "chip_fg": "#374151"},
 }
 
-def task_card(task, key_prefix, list_name):
-    due = task["due"]
-    overdue = due < date.today()
-    p = task["priority"]
-    colors = PRIORITY_COLORS.get(p, {"border":"#d1d5db","bg":"#f3f4f6","fg":"#374151"})
-    border_color = colors["border"] if overdue else "#d1d5db"
+def _accent_color(task):
+    # Overdue bumps accent to priority color; otherwise use neutral gray
+    if task["due"] < date.today():
+        return PRIORITY_COLORS.get(task["priority"], PRIORITY_COLORS["Low"])["accent"]
+    return "#d1d5db"
 
-    # Card container
-    with st.container(border=True):
+def task_card(task, key_prefix, list_name):
+    # Outer row: left accent + card body with columns
+    accent = _accent_color(task)
+    chip = PRIORITY_COLORS.get(task["priority"], PRIORITY_COLORS["Low"])
+
+    st.markdown(f"""
+      <div class="task-row">
+        <div class="task-accent" style="background:{accent}"></div>
+        <div class="task-card">
+    """, unsafe_allow_html=True)
+
+    # Inside the card, use real Streamlit columns so widgets work
+    c1, c2, c3 = st.columns([0.64, 0.18, 0.18])
+    with c1:
+        overdue = task["due"] < date.today()
+        due_cls = "task-sub overdue" if overdue else "task-sub"
+        st.markdown(f"<div class='task-title'>{task['title']}</div>", unsafe_allow_html=True)
+        st.markdown(f"<div class='{due_cls}'>Due {task['due'].isoformat()}</div>", unsafe_allow_html=True)
+    with c2:
         st.markdown(
-            f"""
-            <div style="border:2px solid {border_color};border-radius:12px;
-                        padding:12px 14px;margin-bottom:8px;display:flex;
-                        justify-content:space-between;align-items:center">
-              <div>
-                <div style="font-weight:600;color:#111827">{task['title']}</div>
-                <div style="font-size:12px;color:{'#b91c1c' if overdue else '#6b7280'}">
-                    Due {due.isoformat()}
-                </div>
-              </div>
-              <div style="display:flex;align-items:center;gap:10px;">
-                <span class="badge" style="background:{colors['bg']};color:{colors['fg']}">{p}</span>
-                <form action="" method="post">
-                  <button type="submit" style="background:#f3f4f6;border:1px solid #d1d5db;
-                                               border-radius:6px;padding:2px 8px;
-                                               font-size:12px;cursor:pointer;">✓ Complete</button>
-                </form>
-            </div>
-            </div>
-            """,
+            f"<span class='badge' style='background:{chip['chip_bg']};color:{chip['chip_fg']}'>"
+            f"{task['priority']}</span>",
             unsafe_allow_html=True
         )
-        # Streamlit button (hidden behind our custom markup for styling)
-        if st.button("complete", key=f"{key_prefix}_{task['title']}", label_visibility="hidden"):
+    with c3:
+        if st.button("✓ Complete", key=f"{key_prefix}_{task['title']}", help="Mark task complete"):
             st.session_state[list_name] = [t for t in st.session_state[list_name] if t is not task]
             st.experimental_rerun()
+
+    st.markdown("</div></div>", unsafe_allow_html=True)
 
 def count_overdue(tasks):
     return sum(1 for t in tasks if t["due"] < date.today())
@@ -130,7 +139,7 @@ with st.container():
     alert_row("Confirm Medicaid rollover during financial review.", "Financial", "medicaid")
     alert_row("Keep intake notes date-stamped with initials.", "General", "notes")
 
-    # Tasks & Queues (drawer)
+    # --------- Tasks & Queues (collapsible drawer) ----------
     today_cnt    = len(st.session_state.get("tasks_today", []))
     upcoming_cnt = len(st.session_state.get("tasks_upcoming", []))
     overdue_cnt  = count_overdue(st.session_state.get("tasks_today", [])) + count_overdue(st.session_state.get("tasks_upcoming", []))
@@ -147,7 +156,7 @@ with st.container():
                                          key=lambda x: (prio_rank.get(x['priority'], 9), x['title']))):
                 task_card(t, f"today_{i}", "tasks_today")
 
-            # Quick add
+            # Quick add (today)
             with st.form("quick_add_today", clear_on_submit=True):
                 nt = st.text_input("Add quick task", placeholder="Task title")
                 np = st.selectbox("Priority", ["High","Med","Low"], index=1)
@@ -162,6 +171,7 @@ with st.container():
             for i, t in enumerate(sorted(st.session_state.tasks_upcoming, key=lambda x: (x["due"], x["title"]))):
                 task_card(t, f"up_{i}", "tasks_upcoming")
 
+            # Add to upcoming
             with st.form("quick_add_upcoming", clear_on_submit=True):
                 nt2 = st.text_input("Add task (upcoming)", placeholder="Task title")
                 np2 = st.selectbox("Priority ", ["High","Med","Low"], index=2, key="prio2")
