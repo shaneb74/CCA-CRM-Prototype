@@ -7,7 +7,7 @@ st.set_page_config(page_title="Advisor Workspace", page_icon="💼", layout="wid
 inject_css()
 data = load_seed()
 
-# ---------- tiny helpers ----------
+# ---------------- helpers ----------------
 def get_client(cid):
     for c in data["clients"]:
         if c["id"] == cid:
@@ -16,12 +16,28 @@ def get_client(cid):
 
 def select_client(cid):
     st.session_state["selected_client_id"] = cid
-    # clear per-case mock results when switching so you don't carry over noise
-    st.session_state.pop("ds_result", None)
-    st.session_state.pop("ds_cost", None)
     st.rerun()
 
-# ---------- session defaults ----------
+# One little per-client store so care needs / notes can be edited without a DB
+def case_state(cid):
+    if "case_store" not in st.session_state:
+        st.session_state["case_store"] = {}
+    if cid not in st.session_state["case_store"]:
+        st.session_state["case_store"][cid] = {
+            "needs": [],                # user-set list of care needs
+            "note": "",                 # scratch note
+            "intake_progress": 40,      # visual only
+            "ds_result": None,          # decision support result (plan)
+            "ds_cost": None,            # decision support cost
+            "activities": [
+                "Email: Disclosure sent 9/3",
+                "Phone: Spoke with daughter 9/4",
+                "Tour: Cedar Grove 9/7",
+            ],
+        }
+    return st.session_state["case_store"][cid]
+
+# ---------------- session defaults ----------------
 if "selected_client_id" not in st.session_state:
     st.session_state["selected_client_id"] = data["clients"][0]["id"]
 
@@ -29,7 +45,7 @@ adv = data["advisors"][0]
 mtd = sum(p["fee_amount"] for p in data["placements"] if p["advisor_id"] == adv["id"])
 goal = adv["goal_monthly"]
 
-# ---------- top KPIs ----------
+# ---------------- top KPIs ----------------
 k1, k2, k3, k4 = st.columns(4)
 with k1: kpi("New leads (today)", "5")
 with k2: kpi("Assigned leads", "12")
@@ -38,10 +54,10 @@ with k4: kpi("MTD vs goal", f"${mtd:,.0f} / ${goal:,.0f}", f"{int(mtd/goal*100)}
 
 chips(["Overdue: 2", "Tours this week: 3", "Docs pending: 1"])
 
-# ---------- layout ----------
-left, center, right = st.columns([1.2, 1.8, 1.1])
+# ---------------- layout: two columns ----------------
+left, right = st.columns([1.1, 2.2])
 
-# ---------- left: Work Queue (click to load) ----------
+# -------- left: Work Queue (click to load) ----------
 with left:
     st.markdown("### Work Queue")
     _view = st.selectbox("Filter", options=["My leads", "All", "Overdue", "Tours"], index=0)
@@ -59,67 +75,58 @@ with left:
                 )
             with c2:
                 label = "Selected" if is_sel else "Open"
-                disabled = is_sel
-                if st.button(label, key=f"open_{c['id']}", use_container_width=True, disabled=disabled):
+                if st.button(label, key=f"open_{c['id']}", use_container_width=True, disabled=is_sel):
                     select_client(c["id"])
         st.divider()
 
-# ---------- center: Case Overview (for selected client) ----------
-case = get_client(st.session_state["selected_client_id"])
-with center:
+# -------- right: Case Overview (wide) ---------------
+cid = st.session_state["selected_client_id"]
+case = get_client(cid)
+store = case_state(cid)
+
+with right:
     st.markdown("### Case Overview")
     st.markdown(f"**{case['name']}** • {case['city']}")
     chips([f"Stage: {case['stage']}", f"Priority: {case['priority']}", f"Budget: ${case['budget']:,.0f}"])
 
-    st.text_area("Quick note", placeholder="Add a quick note...", height=80)
+    # Quick note
+    store["note"] = st.text_area("Quick note", value=store["note"], placeholder="Add a quick note...", height=80)
 
+    # Intake progress
     st.markdown("#### Intake")
-    st.progress(40)
-    c1, c2, c3 = st.columns(3)
-    with c1: st.checkbox("Medical", value=True)
-    with c2: st.checkbox("Mobility", value=False)
-    with c3: st.checkbox("Cognition", value=False)
+    store["intake_progress"] = st.slider("Progress", 0, 100, store["intake_progress"])
+    st.progress(store["intake_progress"])
 
+    # Care needs (replaces the confusing checkboxes)
+    st.markdown("#### Care needs")
+    needs = st.multiselect(
+        "Select applicable needs",
+        options=["Cognition support", "Mobility assistance", "Medication mgmt", "Behavioral support", "ADL support"],
+        default=store["needs"],
+        label_visibility="collapsed",
+    )
+    store["needs"] = needs
+    if needs:
+        chips(needs)
+
+    # Financials stub
     st.markdown("#### Financials")
     st.write("Monthly budget, assets, payer source. MTD goal contribution will calculate post-placement.")
 
+    # Decision support results (display-only; launcher moved to left nav)
+    st.markdown("#### Decision support (last results)")
+    # Show what we have; if none, show helpful placeholders
+    ds_plan = store["ds_result"] or {"plan": "—", "notes": "No result saved yet"}
+    ds_cost = store["ds_cost"] or {"estimate": "—", "assumptions": "No estimate saved yet"}
+    tile(f"Recommended: {ds_plan['plan']}", ds_plan.get("notes", ""))
+    tile(f"Estimated Cost: {ds_cost['estimate']}", ds_cost.get("assumptions", ""))
+
+    # Activities
     st.markdown("#### Activities")
-    st.write("- Email: Disclosure sent 9/3")
-    st.write("- Phone: Spoke with daughter 9/4")
-    st.write("- Tour: Cedar Grove 9/7")
-
-# ---------- right: QRG / Personas / Decision Support ----------
-with right:
-    st.markdown("<div class='ctx-panel'>", unsafe_allow_html=True)
-
-    st.markdown("### QRG Quick Steps")
-    qrg_steps = [
-        "Lead received → call within 30 minutes.",
-        "Start intake; capture rep info and DPOA.",
-        "Verify Medicaid rollover during financial review.",
-        "Request RN assessment 5 days before discharge/tour.",
-        "Upload signed Disclosure before scheduling tours.",
-        "Log case notes; date-stamped with initials.",
-        "Schedule tours; confirm with SMS/email.",
-        "If placed, generate invoice within 3 days.",
-    ]
-    for s in qrg_steps:
-        st.write(f"• {s}")
-
-    st.markdown("### Personas cheat-sheet")
-    chips(["Memory care", "Assisted living", "In-home"])
-    st.caption("Select persona to view considerations (stub).")
-
-    st.markdown("### Decision Support")
-    if st.button("Open Care Plan Recommender (mock)"):
-        st.session_state["ds_result"] = {"plan": "In-home care", "notes": "Safety check + part-time caregiver"}
-    if st.button("Open Cost Planner (mock)"):
-        st.session_state["ds_cost"] = {"estimate": "$4,800/mo", "assumptions": "20 hrs/wk caregiver + supplies"}
-
-    st.markdown("#### Last result")
-    plan = st.session_state.get("ds_result", {"plan": "In-home care", "notes": "Safety check + part-time caregiver"})
-    cost = st.session_state.get("ds_cost", {"estimate": "$4,800/mo", "assumptions": "20 hrs/wk caregiver + supplies"})
-    tile(f"Recommended: {plan['plan']}", plan["notes"])
-    tile(f"Estimated Cost: {cost['estimate']}", cost["assumptions"])
-
-    st.markdown("</div>", unsafe_allow_html=True)
+    for a in store["activities"]:
+        st.write(f"- {a}")
+    new_act = st.text_input("Log new activity", "")
+    if new_act:
+        store["activities"].insert(0, new_act)
+        st.session_state[f"clear_{cid}"] = ""  # noop anchor to trigger rerun
+        st.rerun()
