@@ -9,18 +9,13 @@ def inject_css():
       .kpi { border-radius:12px;border:1px solid #e6e6e6;background:#fff;padding:12px 16px;margin-bottom:8px; }
       .kpi .label { color:#57606a;font-size:0.85rem; } .kpi .value { font-weight:700;font-size:1.6rem;line-height:1.2; }
       .note { border-left:4px solid #228be6;background:#f0f7ff;padding:10px 12px;border-radius:6px;margin:8px 0; }
-      /* Sticky KPI bar */
       .sticky { position: sticky; top: 0; z-index: 20; background: #f8fafc; padding-top: 6px; padding-bottom: 6px; }
-      /* Drawer simulation */
-      .drawer {
-        position: fixed; right: 0; top: 0; height: 100vh; width: 380px;
+      .drawer { position: fixed; right: 0; top: 0; height: 100vh; width: 380px;
         background: #ffffff; border-left: 1px solid #e6e6e6; box-shadow: -2px 0 8px rgba(0,0,0,0.06);
-        z-index: 1000; padding: 16px 16px 80px 16px; overflow-y: auto;
-      }
+        z-index: 1000; padding: 16px 16px 80px 16px; overflow-y: auto; }
       .drawer h3 { margin-top: 0; }
       .pill { display:inline-block;padding:2px 8px;border-radius:999px;font-size:12px;color:#fff;margin-left:8px; }
       .pill.comp { background:#1c7ed6; } .pill.fin { background:#2f9e44; } .pill.gen { background:#868e96; }
-      .dismiss { font-size: 12px; color: #4c6ef5; cursor: pointer; }
     </style>
     ''', unsafe_allow_html=True)
 
@@ -35,3 +30,7 @@ def alert(text:str):
 
 def tile(title:str, body:str=''):
     st.markdown(f"<div class='tile'><strong>{title}</strong><br/><span style='color:#57606a'>{body}</span></div>", unsafe_allow_html=True)
+
+def progress(label:str, pct:float):
+    st.write(label)
+    st.progress(int(max(0,min(100,pct))))

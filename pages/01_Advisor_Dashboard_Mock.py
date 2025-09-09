@@ -1,6 +1,6 @@
 
 import streamlit as st
-from ui.widgets import inject_css, kpi, section, alert, tile
+from ui.widgets import inject_css, kpi, section, alert, tile, progress
 from data_loader import load_seed
 
 st.set_page_config(page_title="Advisor Dashboard (Notifications Mock)", page_icon="🧭", layout="wide")
@@ -74,10 +74,10 @@ with left:
         st.write("**[Clinic]** Northlake Geriatrics — Needs case summary.")
         st.caption("Action-oriented comms. Link to Outlook/Teams later.")
     with st.expander("Pipeline by Workflow Stage", expanded=False):
-        st.progress(70, text="Lead Received")
-        st.progress(55, text="Intake")
-        st.progress(25, text="Case Management")
-        st.progress(40, text="Placement")
+        progress("Lead Received", 70)
+        progress("Intake", 55)
+        progress("Case Management", 25)
+        progress("Placement", 40)
 
 with right:
     section("Advisor Workflows")
@@ -102,10 +102,9 @@ st.write("Mon — Confirm tour time (Cedar Grove)")
 
 # Drawer UI (right overlay)
 if st.session_state.show_drawer:
-    # Render overlay drawer via HTML/JS-free approach using absolute positioned div
     st.markdown("<div class='drawer'>", unsafe_allow_html=True)
     st.markdown("### Notifications")
-    # Filters
+
     colf1, colf2, colf3 = st.columns(3)
     with colf1:
         st.session_state.filter_types["Compliance"] = st.checkbox("Compliance", value=st.session_state.filter_types["Compliance"])
@@ -114,18 +113,23 @@ if st.session_state.show_drawer:
     with colf3:
         st.session_state.filter_types["General"] = st.checkbox("General", value=st.session_state.filter_types["General"])
 
-    # List dismissed and active
+    # Unread
     st.markdown("#### Unread")
     for n in remaining:
         if st.session_state.filter_types.get(n["type"], True):
-            st.write(f"- {n['text']}  
-  <span class='pill {n['pill']}'>{n['type']}</span>", unsafe_allow_html=True)
+            st.markdown(f"""
+- {n['text']}  
+  <span class='pill {n['pill']}'>{n['type']}</span>
+""", unsafe_allow_html=True)
 
+    # History
     st.markdown("#### History")
     for n in [x for x in st.session_state.notifications if x['id'] in st.session_state.dismissed]:
         if st.session_state.filter_types.get(n["type"], True):
-            st.write(f"- {n['text']}  
-  <span class='pill {n['pill']}'>{n['type']}</span>", unsafe_allow_html=True)
+            st.markdown(f"""
+- {n['text']}  
+  <span class='pill {n['pill']}'>{n['type']}</span>
+""", unsafe_allow_html=True)
 
     if st.button("Close"):
         st.session_state.show_drawer = False

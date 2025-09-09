@@ -35,6 +35,15 @@
         "no support"
       ],
       "budget": 5200
+    },
+    {
+      "id": "cli_3",
+      "name": "Grace Lane",
+      "stage": "Intake",
+      "advisor_id": "adv_2",
+      "city": "Austin, TX",
+      "flags": [],
+      "budget": 3800
     }
   ],
   "placements": [
@@ -45,6 +54,37 @@
       "move_in": "2025-09-08",
       "fee_amount": 12000,
       "invoice_status": "Paid"
+    },
+    {
+      "client_id": "cli_4",
+      "advisor_id": "adv_1",
+      "community_id": "com_1",
+      "move_in": "2025-09-03",
+      "fee_amount": 8500,
+      "invoice_status": "Open"
+    }
+  ],
+  "documents": [
+    {
+      "client_id": "cli_2",
+      "client": "Raymond Cole",
+      "name": "State Disclosure",
+      "status": "Signed",
+      "date": "2025-09-06"
+    },
+    {
+      "client_id": "cli_2",
+      "client": "Raymond Cole",
+      "name": "RN Assessment",
+      "status": "Uploaded",
+      "date": "2025-09-07"
+    },
+    {
+      "client_id": "cli_1",
+      "client": "Margaret Holt",
+      "name": "State Disclosure",
+      "status": "Pending",
+      "date": ""
     }
   ]
 }
