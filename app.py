@@ -6,4 +6,4 @@ st.set_page_config(page_title="Senior CRM Prototype", page_icon="📋", layout="
 inject_css()
 
 st.markdown("# app")
-st.markdown("Use the left nav to open pages.")
+st.markdown("This is the landing page for initialization.  Click Dashbord on the left nav")
