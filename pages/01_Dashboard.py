@@ -1,189 +1,52 @@
-# 01_Dashboard.py — dashboard with safe column nesting
 import streamlit as st
-from datetime import date, timedelta
+from datetime import date
+import store
 
-# ---------- App/page config ----------
-st.set_page_config(
-    page_title="Advisor Dashboard",
-    page_icon="📊",
-    layout="wide",
-    initial_sidebar_state="expanded",
-)
-
-# ---------- Minimal CSS ----------
-def inject_css():
-    st.markdown("""
-    <style>
-      .page {max-width:1200px;margin:0 auto}
-      .card {background:#fff;border:1px solid #e9edf3;border-radius:16px;padding:18px}
-      .kpi {display:flex;flex-direction:column;gap:8px}
-      .kpi h3 {margin:0;font-size:14px;color:#6b7280;font-weight:600}
-      .kpi .num {font-size:28px;font-weight:700;color:#111827;line-height:1}
-      .sub {font-size:12px;color:#6b7280}
-
-      .badge {display:inline-block;font-size:11px;padding:2px 8px;border-radius:999px;border:1px solid rgba(0,0,0,0.06)}
-      .badge.green {background:#ecfdf5;color:#065f46}
-      .badge.red {background:#fef2f2;color:#991b1b}
-      .badge.yellow {background:#fffbeb;color:#92400e}
-
-      .alert {background:#f7fbff;border:1px solid #e1f0ff;border-radius:12px;padding:10px 12px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center}
-      .alert .tag {font-size:11px;color:#2563eb;background:#eaf2ff;border-radius:999px;padding:2px 8px;margin-left:6px}
-      .section-title{font-weight:700;font-size:18px;margin:8px 0}
-
-      .task-title{font-weight:600;color:#111827;margin-bottom:2px}
-      .task-sub{font-size:12px;color:#6b7280}
-      .overdue{color:#b91c1c !important}
-    </style>
-    """, unsafe_allow_html=True)
-
-inject_css()
-
-# ---------- Helpers ----------
-def kpi_card(title, value, sub_html=""):
-    st.markdown(
-        f'<div class="card kpi"><h3>{title}</h3><div class="num">{value}</div>'
-        f'<div class="sub">{sub_html}</div></div>', unsafe_allow_html=True
-    )
-
-def alert_row(message, tag, key):
-    c1, c2 = st.columns([10,1])
-    with c1:
-        st.markdown(f'<div class="alert">{message} <span class="tag">{tag}</span></div>',
-                    unsafe_allow_html=True)
-    with c2:
-        st.button("✓", key=f"ack_{key}")
-
-PRIORITY = {
-    "High": {"accent": "#dc2626", "chip_bg": "#fee2e2", "chip_fg": "#991b1b"},
-    "Med":  {"accent": "#f59e0b", "chip_bg": "#fef9c3", "chip_fg": "#92400e"},
-    "Low":  {"accent": "#9ca3af", "chip_bg": "#e5e7eb", "chip_fg": "#374151"},
-}
-
-def count_overdue(tasks):
-    return sum(1 for t in tasks if t["due"] < date.today())
-
-def task_card(task, key_prefix, list_name):
-    """One bordered container with ONE columns() row. That’s it."""
-    overdue = task["due"] < date.today()
-    accent = PRIORITY.get(task["priority"], PRIORITY["Low"])["accent"] if overdue else "#d1d5db"
-    chip = PRIORITY.get(task["priority"], PRIORITY["Low"])
-
-    with st.container(border=True):
-        # Single columns call: [accent | title/due | chip | complete]
-        c_accent, c_main, c_chip, c_btn = st.columns([0.035, 0.63, 0.17, 0.165])
-
-        with c_accent:
-            st.markdown(
-                f"<div style='width:6px;height:54px;background:{accent};border-radius:10px;'></div>",
-                unsafe_allow_html=True,
-            )
-
-        with c_main:
-            st.markdown(f"<div class='task-title'>{task['title']}</div>", unsafe_allow_html=True)
-            cls = "task-sub overdue" if overdue else "task-sub"
-            st.markdown(f"<div class='{cls}'>Due {task['due'].isoformat()}</div>", unsafe_allow_html=True)
-
-        with c_chip:
-            st.markdown(
-                f"<span class='badge' style='background:{chip['chip_bg']};color:{chip['chip_fg']}'>"
-                f"{task['priority']}</span>",
-                unsafe_allow_html=True
-            )
-
-        with c_btn:
-            if st.button("✓ Complete", key=f"{key_prefix}_{task['title']}"):
-                st.session_state[list_name] = [t for t in st.session_state[list_name] if t is not task]
-                st.experimental_rerun()
-
-# ---------- Demo state ----------
-if "tasks_today" not in st.session_state:
-    st.session_state.tasks_today = [
-        {"title":"Call lead John Doe","priority":"High","due":date.today()},
-        {"title":"Prepare intake forms","priority":"Med","due":date.today()},
-    ]
-if "tasks_upcoming" not in st.session_state:
-    st.session_state.tasks_upcoming = [
-        {"title":"Follow up with client Jane","priority":"Med","due":date.today()+timedelta(days=1)},
-        {"title":"Schedule case review","priority":"Low","due":date.today()+timedelta(days=2)},
-        {"title":"Complete assessment for Mary Johnson","priority":"High","due":date.today()+timedelta(days=3)},
-    ]
-
-# ---------- Page ----------
 st.title("Advisor Dashboard")
-st.markdown('<div class="page">', unsafe_allow_html=True)
 
-# KPI row
-k1, k2, k3, k4 = st.columns([1,1,1,1.2])
-with k1: kpi_card("New leads (today)", "5", '<span class="badge green">+2 vs yesterday</span>')
-with k2: kpi_card("Assigned leads", "12", '<span class="badge green">+1 this week</span>')
-with k3: kpi_card("Active cases", "3", '<span class="badge red">-1 since Fri</span>')
-with k4: kpi_card("MTD vs goal", "$20,500 / $40,000", '<span class="badge yellow">51% of goal</span>')
+def badge(text, bg, fg):
+    st.markdown(f"<span style='background:{bg};color:{fg};padding:2px 8px;border-radius:999px;font-size:11px;border:1px solid rgba(0,0,0,0.06)'>{text}</span>", unsafe_allow_html=True)
 
-st.write("")
+def kpi_card(title, value, sub=""):
+    with st.container(border=True):
+        st.markdown(f"**{title}**")
+        st.markdown(f"<div style='font-size:28px;font-weight:700'>{value}</div>", unsafe_allow_html=True)
+        if sub: st.caption(sub)
 
-# Alerts
-st.markdown('<div class="section-title">Guidance & Alerts</div>', unsafe_allow_html=True)
-alert_row("Upload signed Disclosure before scheduling tours.", "Compliance", "disclosure")
-alert_row("Confirm Medicaid rollover during financial review.", "Financial", "medicaid")
-alert_row("Keep intake notes date-stamped with initials.", "General", "notes")
+leads = store.get_leads()
+leads_today = [x for x in leads if x["created"] == date.today()]
+assigned = [x for x in leads if x["assigned_to"]]
+active_cases = [x for x in leads if x["status"] in ("new","in_progress")]
 
-# Tasks & Queues (collapsible drawer)
-today_cnt    = len(st.session_state.get("tasks_today", []))
-upcoming_cnt = len(st.session_state.get("tasks_upcoming", []))
-overdue_cnt  = count_overdue(st.session_state.get("tasks_today", [])) + count_overdue(st.session_state.get("tasks_upcoming", []))
-header = f"Tasks & Queues  •  Today: {today_cnt}  •  Upcoming: {upcoming_cnt}" + (f"  •  Overdue: {overdue_cnt}" if overdue_cnt else "")
+l1, l2, l3, l4 = st.columns([1,1,1,1.2])
+with l1: kpi_card("New leads (today)", len(leads_today), "+ App and other sources")
+with l2: kpi_card("Assigned leads", len(assigned))
+with l3: kpi_card("Active cases", len(active_cases))
+with l4: kpi_card("MTD vs goal", "$20,500 / $40,000", "51% of goal")
 
-with st.expander(header, expanded=True):
-    left, right = st.columns(2)
+st.divider()
+st.subheader("New Leads (Today)")
 
-    with left:
-        st.markdown("**Due today**")
-        prio_rank = {"High":0, "Med":1, "Low":2}
-        for i, t in enumerate(sorted(st.session_state.tasks_today,
-                                     key=lambda x: (prio_rank.get(x['priority'], 9), x['title']))):
-            task_card(t, f"today_{i}", "tasks_today")
-
-        with st.form("quick_add_today", clear_on_submit=True):
-            nt = st.text_input("Add quick task", placeholder="Task title")
-            np = st.selectbox("Priority", ["High","Med","Low"], index=1)
-            submitted = st.form_submit_button("Add")
-            if submitted and nt.strip():
-                st.session_state.tasks_today.append({"title": nt.strip(), "priority": np, "due": date.today()})
-                st.experimental_rerun()
-
-    with right:
-        st.markdown("**Upcoming**")
-        for i, t in enumerate(sorted(st.session_state.tasks_upcoming, key=lambda x: (x["due"], x["title"]))):
-            task_card(t, f"up_{i}", "tasks_upcoming")
-
-        with st.form("quick_add_upcoming", clear_on_submit=True):
-            nt2 = st.text_input("Add task (upcoming)", placeholder="Task title")
-            np2 = st.selectbox("Priority ", ["High","Med","Low"], index=2, key="prio2")
-            dd2 = st.date_input("Due date", value=date.today()+timedelta(days=1), min_value=date.today())
-            sub2 = st.form_submit_button("Add")
-            if sub2 and nt2.strip():
-                st.session_state.tasks_upcoming.append({"title": nt2.strip(), "priority": np2, "due": dd2})
-                st.experimental_rerun()
-
-# Pipeline
-st.markdown('<div class="section-title">Pipeline by Workflow Stage</div>', unsafe_allow_html=True)
-st.progress(0.51, text="Lead → Intake → Search → Decision → Transition → Invoice")
-
-# Communications
-with st.expander("Communications"):
-    st.write("- VM from John Doe about tour availability")
-    st.write("- Email to Mary J. with disclosure PDF")
-    st.write("- SMS to Jane: confirmed Friday call")
-
-# Workflows
-st.markdown('<div class="section-title">Advisor Workflows</div>', unsafe_allow_html=True)
-with st.expander("Lead → Intake"):
-    st.markdown("**Lead Received**  \nCall client and start intake (~30 min). Upload disclosure before tours.")
-    st.markdown("**Client Intake**  \nComplete intake in CRM. Keep notes date-stamped.")
-    st.button("Use as checklist", key="wf1")
-with st.expander("Case Management → Search"):
-    st.write("Qualify budget, location, care level. Shortlist 3 communities. Schedule tours.")
-with st.expander("Decision → Transition → Invoice"):
-    st.write("Confirm placement, transition checklist, send invoice and documentation.")
-
-st.markdown('</div>', unsafe_allow_html=True)
+if not leads_today:
+    st.write("No new leads today.")
+else:
+    for lead in leads_today[:5]:
+        c1, c2, c3, c4, c5 = st.columns([0.35, 0.15, 0.18, 0.22, 0.10])
+        with c1:
+            st.markdown(f"**{lead['name']}**")
+            st.caption(lead["city"])
+        with c2:
+            if lead["origin"] == "app":
+                badge("App Lead", "#ecfdf5", "#065f46")
+            elif lead["origin"] == "phone":
+                badge("Phone", "#eff6ff", "#1d4ed8")
+            else:
+                badge(lead["origin"].title(), "#f3f4f6", "#374151")
+        with c3:
+            st.caption(f"{lead['preference']} – est. ${lead['budget']:,}" if lead["budget"] else lead["preference"])
+        with c4:
+            st.caption(f"Timeline: {lead['timeline']}")
+        with c5:
+            if st.button("Open", key=f"open_{lead['id']}"):
+                store.set_selected_lead(lead["id"])
+                st.switch_page("pages/04_Client_Record.py")

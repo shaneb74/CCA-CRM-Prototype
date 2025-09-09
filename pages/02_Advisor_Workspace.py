@@ -1,46 +1,51 @@
-
 import streamlit as st
-from ui.widgets import inject_css
+from datetime import date
+import store
 
-inject_css()
-st.markdown("## Advisor Workspace")
+st.title("Advisor Workspace")
 
-# Demo data
-LEADS = [
-    {"id":"holt","name":"Margaret Holt","stage":"Intake","city":"Seattle, WA","next":"Call representative","priority":2,"budget":4500},
-    {"id":"cole","name":"Raymond Cole","stage":"Case Mgmt","city":"Tacoma, WA","next":"Request RN assessment","priority":1,"budget":5200},
-    {"id":"lane","name":"Grace Lane","stage":"Lead Received","city":"Bellevue, WA","next":"Start intake","priority":3,"budget":3800},
-]
-st.session_state.setdefault("current_case", LEADS[0]["id"])
+def chip(text):
+    st.markdown(f"<span style='background:#f3f4f6;color:#111;padding:3px 10px;border-radius:999px;font-size:12px;border:1px solid #e5e7eb'>{text}</span>", unsafe_allow_html=True)
 
-def select_case(case_id:str):
-    st.session_state["current_case"] = case_id
-
-left, right = st.columns([1,2], gap="large")
-
+left, right = st.columns([0.7, 0.3])
 with left:
-    st.markdown("### Work Queue")
-    st.selectbox("Filter", ["My leads","All leads"], index=1, key="wq_filter")
-    for lead in LEADS:
-        with st.container(border=True):
-            st.markdown(f"**{lead['name']} — {lead['stage']}**")
-            st.caption(f"{lead['city']} • Next: {lead['next']}")
-            if st.button("Open", key=f"open_{lead['id']}"):
-                select_case(lead["id"])
-                st.experimental_rerun()
-
+    origin = st.segmented_control("Origin", options=["All","App","Phone","Hospital"], default="All")
 with right:
-    case = next(x for x in LEADS if x["id"]==st.session_state["current_case"])
-    st.markdown("### Case Overview")
-    st.markdown(f"**{case['name']}** • {case['city']}")
-    st.caption(f"Stage: {case['stage']}   •   Priority: {case['priority']}   •   Budget: ${case['budget']:,}")
-    st.text_area("Quick note", placeholder="Add a quick note...")
-    st.progress(0.6, text="Intake progress")
-    st.selectbox("Care needs", ["Choose options","Medical","Mobility","Cognition"], index=0)
-    st.markdown("#### Decision support (last results)")
-    st.info("**Recommended:** Assisted Living  \n**Estimated cost:** $8,000 / month")
-    st.markdown("")
-    if st.button("Open full client record"):
-        # Navigate to page 4 (Client Record). Streamlit multipage cannot programmatically navigate,
-        # so we display a hint instead.
-        st.success("Use the left navigation → **Client Record** to view the full record.")
+    due_filter = st.segmented_control("Due", options=["All","Today","Upcoming"], default="All")
+
+def origin_match(o):
+    if origin == "All": return True
+    mapping = {"App":"app", "Phone":"phone", "Hospital":"hospital"}
+    return o == mapping[origin]
+
+def due_match(d):
+    if due_filter == "All": return True
+    if due_filter == "Today": return d == date.today()
+    return d > date.today()
+
+tasks = [t for t in store.get_tasks(active_only=True) if origin_match(t["origin"]) and due_match(t["due"])]
+
+if not tasks:
+    st.write("Nothing in your queue.")
+else:
+    leads = {l["id"]: l for l in store.get_leads()}
+    for t in tasks:
+        c1, c2, c3, c4 = st.columns([0.50, 0.15, 0.20, 0.15])
+        lead = leads.get(t["lead_id"])
+        with c1:
+            st.markdown(f"**{t['title']}**")
+            if lead: st.caption(f"{lead['name']} • {lead['city']}")
+        with c2:
+            chip("App Lead" if t["origin"] == "app" else t["origin"].title())
+        with c3:
+            st.caption(f"Due: {t['due'].isoformat()}  •  Priority: {t['priority']}")
+        with c4:
+            colb1, colb2 = st.columns([0.6,0.4])
+            with colb1:
+                if st.button("Open", key=f"open_{t['id']}"):
+                    store.set_selected_lead(t["lead_id"])
+                    st.switch_page("pages/04_Client_Record.py")
+            with colb2:
+                if st.button("✓", key=f"done_{t['id']}", help="Complete"):
+                    store.complete_task(t["id"])
+                    st.experimental_rerun()

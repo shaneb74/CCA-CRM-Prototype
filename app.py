@@ -1,8 +1,10 @@
 import streamlit as st
-from ui.widgets import inject_css
+import store
 
-st.set_page_config(page_title="Senior CRM Prototype", page_icon="📋", layout="wide")
-inject_css()
+st.set_page_config(page_title="CCA CRM Prototype", page_icon="📋", layout="wide", initial_sidebar_state="expanded")
 
-st.markdown("# app")
-st.markdown("Use the left nav to open pages.")
+store.init()
+
+st.title("CCA CRM Prototype")
+st.write("Use the left nav to open pages.")
+st.info("Dashboard → Advisor Workspace → Case Overview · Notifications")

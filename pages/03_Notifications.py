@@ -1,25 +1,16 @@
-
 import streamlit as st
-from ui.widgets import inject_css
+import store
 
-inject_css()
-st.markdown("## Notifications Center")
+st.title("Notifications")
 
-st.session_state.setdefault("notice_history", [])
-st.session_state.setdefault("notices", [
-    {"text":"Upload signed Disclosure before scheduling tours.", "type":"Compliance"},
-    {"text":"Confirm Medicaid rollover during financial review.", "type":"Financial"},
-    {"text":"Keep intake notes date-stamped with initials.", "type":"General"},
-])
-
-st.markdown("### Unread")
-for n in st.session_state["notices"]:
-    st.write(n["text"])
-    st.caption(n["type"])
-
-st.markdown("### History")
-if not st.session_state["notice_history"]:
-    st.caption("Shown for demo only.")
-for n in st.session_state["notice_history"]:
-    st.write(n["text"])
-    st.caption(n["type"])
+alerts = [
+    ("Compliance", "Upload signed Disclosure before scheduling tours."),
+    ("Financial", "Confirm Medicaid rollover during financial review."),
+    ("General", "Keep intake notes date-stamped with initials."),
+]
+for idx, (tag, msg) in enumerate(alerts, start=1):
+    c1, c2 = st.columns([0.9, 0.1])
+    with c1:
+        st.info(f"[{tag}] {msg}")
+    with c2:
+        st.button("✓", key=f"ack_{idx}")
