@@ -1,6 +1,17 @@
+# 01_Dashboard.py — Dashboard (defensive init)
 import streamlit as st
-from datetime import date
 import store
+store.init()
+
+def segmented(label, options, default):
+    # Use segmented_control if available; otherwise fall back to radio
+    if hasattr(st, "segmented_control"):
+        return st.segmented_control(label, options=options, default=default)
+    else:
+        return st.radio(label, options, index=options.index(default), horizontal=True)
+
+
+from datetime import date
 
 st.title("Advisor Dashboard")
 
@@ -43,10 +54,14 @@ else:
             else:
                 badge(lead["origin"].title(), "#f3f4f6", "#374151")
         with c3:
-            st.caption(f"{lead['preference']} – est. ${lead['budget']:,}" if lead["budget"] else lead["preference"])
+            st.caption(f"{lead['preference']}" + (f" – est. ${lead['budget']:,}" if lead["budget"] else ""))
         with c4:
             st.caption(f"Timeline: {lead['timeline']}")
         with c5:
             if st.button("Open", key=f"open_{lead['id']}"):
                 store.set_selected_lead(lead["id"])
-                st.switch_page("pages/04_Client_Record.py")
+                # switch_page may not exist on older versions
+                if hasattr(st, "switch_page"):
+                    st.switch_page("pages/04_Client_Record.py")
+                else:
+                    st.experimental_rerun()

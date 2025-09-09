@@ -1,10 +1,22 @@
+# 04_Client_Record.py — Case Overview (defensive init)
 import streamlit as st
-from datetime import date
 import store
+store.init()
+
+def segmented(label, options, default):
+    # Use segmented_control if available; otherwise fall back to radio
+    if hasattr(st, "segmented_control"):
+        return st.segmented_control(label, options=options, default=default)
+    else:
+        return st.radio(label, options, index=options.index(default), horizontal=True)
+
+
+from datetime import date
 
 st.title("Case Overview")
 
-lead = store.get_lead(store.get_selected_lead_id())
+lead_id = store.get_selected_lead_id()
+lead = store.get_lead(lead_id) if lead_id else None
 
 if not lead:
     options = {f"{x['name']} ({x['id']})": x["id"] for x in store.get_leads()}

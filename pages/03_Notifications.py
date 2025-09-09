@@ -1,5 +1,15 @@
+# 03_Notifications.py — simple alerts (defensive init)
 import streamlit as st
 import store
+store.init()
+
+def segmented(label, options, default):
+    # Use segmented_control if available; otherwise fall back to radio
+    if hasattr(st, "segmented_control"):
+        return st.segmented_control(label, options=options, default=default)
+    else:
+        return st.radio(label, options, index=options.index(default), horizontal=True)
+
 
 st.title("Notifications")
 

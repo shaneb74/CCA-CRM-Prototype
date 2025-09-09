@@ -1,6 +1,17 @@
+# 02_Advisor_Workspace.py — Work Queue (defensive init + control fallback)
 import streamlit as st
-from datetime import date
 import store
+store.init()
+
+def segmented(label, options, default):
+    # Use segmented_control if available; otherwise fall back to radio
+    if hasattr(st, "segmented_control"):
+        return st.segmented_control(label, options=options, default=default)
+    else:
+        return st.radio(label, options, index=options.index(default), horizontal=True)
+
+
+from datetime import date
 
 st.title("Advisor Workspace")
 
@@ -9,9 +20,9 @@ def chip(text):
 
 left, right = st.columns([0.7, 0.3])
 with left:
-    origin = st.segmented_control("Origin", options=["All","App","Phone","Hospital"], default="All")
+    origin = segmented("Origin", ["All","App","Phone","Hospital"], "All")
 with right:
-    due_filter = st.segmented_control("Due", options=["All","Today","Upcoming"], default="All")
+    due_filter = segmented("Due", ["All","Today","Upcoming"], "All")
 
 def origin_match(o):
     if origin == "All": return True
@@ -44,7 +55,10 @@ else:
             with colb1:
                 if st.button("Open", key=f"open_{t['id']}"):
                     store.set_selected_lead(t["lead_id"])
-                    st.switch_page("pages/04_Client_Record.py")
+                    if hasattr(st, "switch_page"):
+                        st.switch_page("pages/04_Client_Record.py")
+                    else:
+                        st.experimental_rerun()
             with colb2:
                 if st.button("✓", key=f"done_{t['id']}", help="Complete"):
                     store.complete_task(t["id"])
