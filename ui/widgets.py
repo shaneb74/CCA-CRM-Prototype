@@ -1,5 +1,6 @@
 
 import streamlit as st
+
 def inject_css():
     st.markdown('''
     <style>
@@ -10,6 +11,9 @@ def inject_css():
       .kpi { border-radius:12px;border:1px solid #e6e6e6;background:#fff;padding:12px 16px; }
       .kpi .label { color:#57606a;font-size:0.85rem; } .kpi .value { font-weight:700;font-size:1.6rem;line-height:1.2; }
       .note { border-left:4px solid #228be6;background:#f0f7ff;padding:10px 12px;border-radius:6px;margin-bottom:10px; }
+      .pill { display:inline-block;padding:2px 8px;border-radius:999px;font-size:12px;color:#fff;margin-left:8px; }
+      .pill.ok { background:#2f9e44; } .pill.warn { background:#d9480f; } .pill.due { background:#1c7ed6; } .pill.over { background:#e03131; }
+      .stage { font-weight:600; margin-top:6px; margin-bottom:2px; }
     </style>
     ''', unsafe_allow_html=True)
 
@@ -18,6 +22,9 @@ def section(title:str):
 
 def kpi(label:str, value:str, help_text:str=""):
     st.markdown(f"<div class='kpi'><div class='label'>{label}</div><div class='value'>{value}</div><div>{help_text}</div></div>", unsafe_allow_html=True)
+
+def pill(text:str, tone:str="ok"):
+    st.markdown(f"<span class='pill {tone}'>{text}</span>", unsafe_allow_html=True)
 
 def tile(title:str, body:str='', link:str=None, link_label:str='Open'):
     st.markdown(f"<div class='tile'><h4>{title}</h4><p>{body}</p></div>", unsafe_allow_html=True)
