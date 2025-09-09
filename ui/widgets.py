@@ -6,14 +6,21 @@ def inject_css():
     <style>
       .tile { border:1px solid #e6e6e6;border-radius:12px;padding:14px 16px;background:#fff;
               box-shadow:0 1px 2px rgba(0,0,0,0.04);margin-bottom:12px; }
-      .tile h4 { margin:0 0 6px 0; font-size:1.0rem; }
-      .tile p { margin:0; color:#57606a; font-size:0.92rem; }
-      .kpi { border-radius:12px;border:1px solid #e6e6e6;background:#fff;padding:12px 16px; }
+      .kpi { border-radius:12px;border:1px solid #e6e6e6;background:#fff;padding:12px 16px;margin-bottom:8px; }
       .kpi .label { color:#57606a;font-size:0.85rem; } .kpi .value { font-weight:700;font-size:1.6rem;line-height:1.2; }
-      .note { border-left:4px solid #228be6;background:#f0f7ff;padding:10px 12px;border-radius:6px;margin-bottom:10px; }
+      .note { border-left:4px solid #228be6;background:#f0f7ff;padding:10px 12px;border-radius:6px;margin:8px 0; }
+      /* Sticky KPI bar */
+      .sticky { position: sticky; top: 0; z-index: 20; background: #f8fafc; padding-top: 6px; padding-bottom: 6px; }
+      /* Drawer simulation */
+      .drawer {
+        position: fixed; right: 0; top: 0; height: 100vh; width: 380px;
+        background: #ffffff; border-left: 1px solid #e6e6e6; box-shadow: -2px 0 8px rgba(0,0,0,0.06);
+        z-index: 1000; padding: 16px 16px 80px 16px; overflow-y: auto;
+      }
+      .drawer h3 { margin-top: 0; }
       .pill { display:inline-block;padding:2px 8px;border-radius:999px;font-size:12px;color:#fff;margin-left:8px; }
-      .pill.ok { background:#2f9e44; } .pill.warn { background:#d9480f; } .pill.due { background:#1c7ed6; } .pill.over { background:#e03131; }
-      .stage { font-weight:600; margin-top:6px; margin-bottom:2px; }
+      .pill.comp { background:#1c7ed6; } .pill.fin { background:#2f9e44; } .pill.gen { background:#868e96; }
+      .dismiss { font-size: 12px; color: #4c6ef5; cursor: pointer; }
     </style>
     ''', unsafe_allow_html=True)
 
@@ -23,16 +30,8 @@ def section(title:str):
 def kpi(label:str, value:str, help_text:str=""):
     st.markdown(f"<div class='kpi'><div class='label'>{label}</div><div class='value'>{value}</div><div>{help_text}</div></div>", unsafe_allow_html=True)
 
-def pill(text:str, tone:str="ok"):
-    st.markdown(f"<span class='pill {tone}'>{text}</span>", unsafe_allow_html=True)
-
-def tile(title:str, body:str='', link:str=None, link_label:str='Open'):
-    st.markdown(f"<div class='tile'><h4>{title}</h4><p>{body}</p></div>", unsafe_allow_html=True)
-    if link:
-        st.page_link(link, label=link_label)
-
 def alert(text:str):
     st.markdown(f"<div class='note'>{text}</div>", unsafe_allow_html=True)
 
-def progress(label:str, pct:float):
-    st.write(label); st.progress(int(max(0,min(100,pct))))
+def tile(title:str, body:str=''):
+    st.markdown(f"<div class='tile'><strong>{title}</strong><br/><span style='color:#57606a'>{body}</span></div>", unsafe_allow_html=True)
