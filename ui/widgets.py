@@ -15,24 +15,8 @@ def inject_css():
       .kpi-delta.pos { color: #027a48; border-color: #a7f3d0; background: #ecfdf5; }
       .kpi-delta.neg { color: #b42318; border-color: #fecaca; background: #fef2f2; }
       .kpi-delta.neu { color: #334155; border-color: #e2e8f0; background: #f8fafc; }
-
-      /* New At-a-glance card */
-      .kpi-wrap {
-        border: 1px solid #e2e8f0;
-        border-radius: 16px;
-        padding: 14px 18px 8px 18px;
-        background: linear-gradient(180deg,#ffffff 0%, #f9fafb 100%);
-        box-shadow: 0 1px 2px rgba(0,0,0,0.04);
-        margin-bottom: 8px;
-      }
-      .kpi-wrap .hdr {
-        display:flex; align-items:center; justify-content:space-between;
-        padding-bottom: 6px; margin-bottom: 10px; border-bottom: 1px dashed #e5e7eb;
-      }
-      .kpi-wrap .hdr .title {
-        font-weight: 600; color:#0f172a; letter-spacing:.2px;
-      }
       .kpi-pill { padding: 4px 8px; font-size: 12px; border:1px solid #e2e8f0; border-radius:999px; color:#334155; background:#fff; }
+      .kpi-row-title { font-weight:600; color:#0f172a; margin-bottom:6px; }
     </style>
     ''', unsafe_allow_html=True)
 
@@ -43,20 +27,17 @@ def tile(title:str, body:str=''):
 
 def progress(label:str, pct:float): st.write(label); st.progress(int(max(0,min(100,pct))))
 
-def at_a_glance(render: Callable[[], None], pills: Optional[list[str]] = None):
-    st.markdown("<div class='kpi-wrap'>", unsafe_allow_html=True)
-    left, right = st.columns([5,2])
-    with left:
-        st.markdown("<div class='hdr'><div class='title'>At a glance</div></div>", unsafe_allow_html=True)
-    with right:
+def kpi_band(render: Callable, pills: Optional[list[str]] = None):
+    # ultra-light container: no borders, no wrappers that can render ghost bars
+    title_col, pill_col = st.columns([5,2])
+    with title_col:
+        st.markdown("<div class='kpi-row-title'>At a glance</div>", unsafe_allow_html=True)
+    with pill_col:
         if pills:
             pill_html = " ".join([f"<span class='kpi-pill'>{p}</span>" for p in pills])
-            st.markdown(f"<div style='text-align:right' class='hdr'><div>{pill_html}</div></div>", unsafe_allow_html=True)
-    # row of four KPIs
+            st.markdown(f"<div style='text-align:right'>{pill_html}</div>", unsafe_allow_html=True)
     c1, c2, c3, c4 = st.columns([1,1,1,1])
-    render_cols = [c1,c2,c3,c4]
-    render(*render_cols)  # render function receives the 4 columns
-    st.markdown("</div>", unsafe_allow_html=True)
+    render(c1, c2, c3, c4)
 
 def kpi_block(col, title:str, value:str, subtitle:str="", delta:Optional[str]=None, intent:str="neu"):
     with col:

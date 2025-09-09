@@ -1,6 +1,6 @@
 
 import streamlit as st
-from ui.widgets import inject_css, section, tile, progress, at_a_glance, kpi_block
+from ui.widgets import inject_css, section, tile, progress, kpi_band, kpi_block
 from data_loader import load_seed
 
 st.set_page_config(page_title="Advisor Dashboard", page_icon="🧭", layout="wide")
@@ -27,7 +27,7 @@ def render_kpis(c1, c2, c3, c4):
     kpi_block(c3, "Active cases", str(len(data["clients"])), delta="−1 since Fri", intent="neg")
     kpi_block(c4, "MTD vs goal", f"${mtd:,.0f} / ${goal:,.0f}", subtitle=f"{pct}% achieved", delta=f"{pct}% of goal", intent="neu")
 
-at_a_glance(render_kpis, pills=["This week: 2 placements", "Pending: $15,500", "Tours booked: 3"])
+kpi_band(render_kpis, pills=["This week: 2 placements", "Pending: $15,500", "Tours booked: 3"])
 
 remaining = [n for n in st.session_state.notifications if n["id"] not in st.session_state.dismissed]
 for n in remaining:
