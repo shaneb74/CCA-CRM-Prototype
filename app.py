@@ -8,7 +8,7 @@ st.title("CCA CRM Prototype")
 
 st.page_link("pages/01_Advisor_Workspace.py", label="Advisor Workspace")
 st.page_link("pages/02_Advisor_Dashboard_Mock.py", label="Advisor Dashboard Mock")
-st.page_link("pages/03_🔔_Notifications.py", label="🔔 Notifications")
+st.page_link("pages/03_Notifications.py", label="Notifications")
 st.page_link("pages/10_Admin_Dashboard.py", label="Admin Dashboard")
 st.page_link("pages/20_Clients.py", label="Clients")
 st.page_link("pages/21_Client_Record.py", label="Client Record")
