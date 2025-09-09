@@ -19,5 +19,41 @@
       "fee_amount": 12000,
       "move_in": "2025-09-08"
     }
+  ],
+  "clients": [
+    {
+      "id": "cli_1",
+      "name": "Margaret Holt",
+      "city": "Seattle, WA",
+      "stage": "Intake",
+      "priority": 2,
+      "next": "Call representative",
+      "tags": [
+        "fall risk"
+      ],
+      "budget": 4500
+    },
+    {
+      "id": "cli_2",
+      "name": "Raymond Cole",
+      "city": "Tacoma, WA",
+      "stage": "Case Mgmt",
+      "priority": 1,
+      "next": "Request RN assessment",
+      "tags": [
+        "memory"
+      ],
+      "budget": 5200
+    },
+    {
+      "id": "cli_3",
+      "name": "Grace Lane",
+      "city": "Bellevue, WA",
+      "stage": "Lead Received",
+      "priority": 3,
+      "next": "Start intake",
+      "tags": [],
+      "budget": 3800
+    }
   ]
 }
