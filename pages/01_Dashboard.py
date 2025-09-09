@@ -1,4 +1,4 @@
-# 01_Dashboard.py  — standalone Streamlit dashboard
+# 01_Dashboard.py — full, self-contained dashboard
 
 import streamlit as st
 from datetime import date, datetime, timedelta
@@ -86,6 +86,9 @@ def task_card(task, key_prefix, list_name):
             st.session_state[list_name] = [t for t in st.session_state[list_name] if t is not task]
             st.experimental_rerun()
 
+def count_overdue(tasks):
+    return sum(1 for t in tasks if t["due"] < date.today())
+
 # ---------- Seed demo state ----------
 if "tasks_today" not in st.session_state:
     st.session_state.tasks_today = [
@@ -119,41 +122,47 @@ with st.container():
     alert_row("Confirm Medicaid rollover during financial review.", "Financial", "medicaid")
     alert_row("Keep intake notes date-stamped with initials.", "General", "notes")
 
-    # Tasks & Queues
-    st.markdown('<div class="section-title">Tasks & Queues</div>', unsafe_allow_html=True)
-    left, right = st.columns(2)
+    # --------- Tasks & Queues (collapsible drawer) ----------
+    today_cnt    = len(st.session_state.get("tasks_today", []))
+    upcoming_cnt = len(st.session_state.get("tasks_upcoming", []))
+    overdue_cnt  = count_overdue(st.session_state.get("tasks_today", [])) + count_overdue(st.session_state.get("tasks_upcoming", []))
+    header = f"Tasks & Queues  •  Today: {today_cnt}  •  Upcoming: {upcoming_cnt}" + (f"  •  Overdue: {overdue_cnt}" if overdue_cnt else "")
 
-    # Today
-    with left:
-        st.markdown("**Due today**")
-        prio_rank = {"High":0, "Med":1, "Low":2}
-        for i, t in enumerate(sorted(st.session_state.tasks_today,
-                                     key=lambda x: (prio_rank.get(x["priority"], 9), x["title"]))):
-            task_card(t, f"today_{i}", "tasks_today")
+    with st.expander(header, expanded=True):
+        left, right = st.columns(2)
 
-        # Quick add for today
-        with st.form("quick_add_today", clear_on_submit=True):
-            nt = st.text_input("Add quick task", placeholder="Task title")
-            np = st.selectbox("Priority", ["High","Med","Low"], index=1)
-            submitted = st.form_submit_button("Add")
-            if submitted and nt.strip():
-                st.session_state.tasks_today.append({"title": nt.strip(), "priority": np, "due": date.today()})
-                st.experimental_rerun()
+        # Today
+        with left:
+            st.markdown("**Due today**")
+            prio_rank = {"High":0, "Med":1, "Low":2}
+            for i, t in enumerate(sorted(st.session_state.tasks_today,
+                                         key=lambda x: (prio_rank.get(x['priority'], 9), x['title']))):
+                task_card(t, f"today_{i}", "tasks_today")
 
-    # Upcoming
-    with right:
-        st.markdown("**Upcoming**")
-        for i, t in enumerate(sorted(st.session_state.tasks_upcoming, key=lambda x: (x["due"], x["title"]))):
-            task_card(t, f"up_{i}", "tasks_upcoming")
+            # Quick add for today
+            with st.form("quick_add_today", clear_on_submit=True):
+                nt = st.text_input("Add quick task", placeholder="Task title")
+                np = st.selectbox("Priority", ["High","Med","Low"], index=1)
+                submitted = st.form_submit_button("Add")
+                if submitted and nt.strip():
+                    st.session_state.tasks_today.append({"title": nt.strip(), "priority": np, "due": date.today()})
+                    st.experimental_rerun()
 
-        with st.form("quick_add_upcoming", clear_on_submit=True):
-            nt2 = st.text_input("Add task (upcoming)", placeholder="Task title")
-            np2 = st.selectbox("Priority ", ["High","Med","Low"], index=2, key="prio2")
-            dd2 = st.date_input("Due date", value=date.today()+timedelta(days=1), min_value=date.today())
-            sub2 = st.form_submit_button("Add")
-            if sub2 and nt2.strip():
-                st.session_state.tasks_upcoming.append({"title": nt2.strip(), "priority": np2, "due": dd2})
-                st.experimental_rerun()
+        # Upcoming
+        with right:
+            st.markdown("**Upcoming**")
+            for i, t in enumerate(sorted(st.session_state.tasks_upcoming, key=lambda x: (x["due"], x["title"]))):
+                task_card(t, f"up_{i}", "tasks_upcoming")
+
+            # Add to upcoming
+            with st.form("quick_add_upcoming", clear_on_submit=True):
+                nt2 = st.text_input("Add task (upcoming)", placeholder="Task title")
+                np2 = st.selectbox("Priority ", ["High","Med","Low"], index=2, key="prio2")
+                dd2 = st.date_input("Due date", value=date.today()+timedelta(days=1), min_value=date.today())
+                sub2 = st.form_submit_button("Add")
+                if sub2 and nt2.strip():
+                    st.session_state.tasks_upcoming.append({"title": nt2.strip(), "priority": np2, "due": dd2})
+                    st.experimental_rerun()
 
     # Pipeline
     st.markdown('<div class="section-title">Pipeline by Workflow Stage</div>', unsafe_allow_html=True)
