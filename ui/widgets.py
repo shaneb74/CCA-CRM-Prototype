@@ -10,12 +10,9 @@ def inject_css():
       .kpi .label { color:#57606a;font-size:0.85rem; } .kpi .value { font-weight:700;font-size:1.6rem;line-height:1.2; }
       .note { border-left:4px solid #228be6;background:#f0f7ff;padding:10px 12px;border-radius:6px;margin:8px 0; }
       .sticky { position: sticky; top: 0; z-index: 20; background: #f8fafc; padding-top: 6px; padding-bottom: 6px; }
-      .drawer { position: fixed; right: 0; top: 0; height: 100vh; width: 380px;
-        background: #ffffff; border-left: 1px solid #e6e6e6; box-shadow: -2px 0 8px rgba(0,0,0,0.06);
-        z-index: 1000; padding: 16px 16px 80px 16px; overflow-y: auto; }
-      .drawer h3 { margin-top: 0; }
       .pill { display:inline-block;padding:2px 8px;border-radius:999px;font-size:12px;color:#fff;margin-left:8px; }
       .pill.comp { background:#1c7ed6; } .pill.fin { background:#2f9e44; } .pill.gen { background:#868e96; }
+      .banner-text { font-size: 0.95rem; }
     </style>
     ''', unsafe_allow_html=True)
 
@@ -26,7 +23,7 @@ def kpi(label:str, value:str, help_text:str=""):
     st.markdown(f"<div class='kpi'><div class='label'>{label}</div><div class='value'>{value}</div><div>{help_text}</div></div>", unsafe_allow_html=True)
 
 def alert(text:str):
-    st.markdown(f"<div class='note'>{text}</div>", unsafe_allow_html=True)
+    st.markdown(f"<div class='note banner-text'>{text}</div>", unsafe_allow_html=True)
 
 def tile(title:str, body:str=''):
     st.markdown(f"<div class='tile'><strong>{title}</strong><br/><span style='color:#57606a'>{body}</span></div>", unsafe_allow_html=True)
