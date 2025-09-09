@@ -9,10 +9,14 @@ def inject_css():
       .kpi { border-radius:12px;border:1px solid #e6e6e6;background:#fff;padding:12px 16px;margin-bottom:8px; min-height:92px; display:flex; flex-direction:column; justify-content:space-between; }
       .kpi .label { color:#57606a;font-size:0.85rem; } .kpi .value { font-weight:700;font-size:1.6rem;line-height:1.2; }
       .note { border-left:4px solid #228be6;background:#f0f7ff;padding:10px 12px;border-radius:6px;margin:8px 0; }
-      .sticky { position: sticky; top: 0; z-index: 20; background: #f8fafc; padding-top: 6px; padding-bottom: 6px; }
       .pill { display:inline-block;padding:2px 8px;border-radius:999px;font-size:12px;color:#fff;margin-left:8px; }
       .pill.comp { background:#1c7ed6; } .pill.fin { background:#2f9e44; } .pill.gen { background:#868e96; }
       .banner-text { font-size: 0.95rem; }
+      .chips { display:flex; gap:8px; flex-wrap:wrap; margin:6px 0 14px 0;}
+      .chip { border:1px solid #e6e6e6; background:#fff; border-radius:999px; padding:4px 10px; font-size:12px; color:#334155;}
+      .muted { color:#6b7280; font-size:0.9rem; }
+      .ctx-panel { border-left:1px solid #e6e6e6; padding-left:16px; }
+      .small { font-size: 0.9rem; }
     </style>
     ''', unsafe_allow_html=True)
 
@@ -20,7 +24,7 @@ def section(title:str):
     st.subheader(title); st.write("")
 
 def kpi(label:str, value:str, help_text:str=""):
-    st.markdown(f"<div class='kpi'><div class='label'>{label}</div><div class='value'>{value}</div><div>{help_text}</div></div>", unsafe_allow_html=True)
+    st.markdown(f"<div class='kpi'><div class='label'>{label}</div><div class='value'>{value}</div><div class='muted'>{help_text}</div></div>", unsafe_allow_html=True)
 
 def alert(text:str):
     st.markdown(f"<div class='note banner-text'>{text}</div>", unsafe_allow_html=True)
@@ -30,3 +34,7 @@ def tile(title:str, body:str=''):
 
 def progress(label:str, pct:float):
     st.write(label); st.progress(int(max(0,min(100,pct))))
+
+def chips(items):
+    html = "<div class='chips'>" + "".join([f"<span class='chip'>{t}</span>" for t in items]) + "</div>"
+    st.markdown(html, unsafe_allow_html=True)

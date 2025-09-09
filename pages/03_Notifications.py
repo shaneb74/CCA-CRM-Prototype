@@ -1,13 +1,14 @@
 
 import streamlit as st
 from ui.widgets import inject_css
-from data_loader import load_seed
 
 st.set_page_config(page_title="Notifications", page_icon="🔔", layout="wide")
 inject_css()
-data = load_seed()
 
-if "dismissed" not in st.session_state: st.session_state.dismissed = []
+if "notifications" not in st.session_state:
+    st.session_state.notifications = []
+if "dismissed" not in st.session_state:
+    st.session_state.dismissed = []
 
 st.title("Notifications Center")
 
