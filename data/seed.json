@@ -1,0 +1,48 @@
+{
+  "advisors": [
+    {
+      "id": "adv_1",
+      "name": "Alex Morgan",
+      "goal_monthly": 40000
+    },
+    {
+      "id": "adv_2",
+      "name": "Riley Chen",
+      "goal_monthly": 40000
+    }
+  ],
+  "clients": [
+    {
+      "id": "cli_1",
+      "name": "Margaret Holt",
+      "stage": "Financial Review",
+      "advisor_id": "adv_1",
+      "city": "Seattle, WA",
+      "flags": [
+        "fall risk",
+        "walker"
+      ],
+      "budget": 4500
+    },
+    {
+      "id": "cli_2",
+      "name": "Raymond Cole",
+      "stage": "Tours",
+      "advisor_id": "adv_1",
+      "city": "Tacoma, WA",
+      "flags": [
+        "memory",
+        "no support"
+      ],
+      "budget": 5200
+    }
+  ],
+  "placements": [
+    {
+      "client_id": "cli_2",
+      "advisor_id": "adv_1",
+      "move_in": "2025-09-08",
+      "fee_amount": 12000
+    }
+  ]
+}
