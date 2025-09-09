@@ -2,8 +2,6 @@
 import streamlit as st
 from ui.widgets import inject_css
 
-import streamlit as st
-
 st.set_page_config(
     page_title="Advisor Dashboard",
     layout="wide",   # <-- this is the magic word
