@@ -16,7 +16,23 @@ def badge(text, bg="#f3f4f6", fg="#374151"):
     st.markdown(f"<span class='badge' style='background:{bg};color:{fg}'> {text} </span>", unsafe_allow_html=True)
 
 st.title("Advisor Workspace")
-st.markdown("""<style>\n  .page {max-width:1200px;margin:0 auto}\n  .card {background:#fff;border:1px solid #e9edf3;border-radius:16px;padding:18px}\n  .kpi h3 {margin:0;font-size:14px;color:#6b7280;font-weight:600}\n  .kpi .num {font-size:28px;font-weight:700;color:#111827;line-height:1}\n  .sub {font-size:12px;color:#6b7280}\n  .badge {display:inline-block;font-size:11px;padding:2px 8px;border-radius:999px;border:1px solid rgba(0,0,0,0.06)}\n  .badge.green {background:#ecfdf5;color:#065f46}\n  .badge.red {background:#fef2f2;color:#991b1b}\n  .badge.yellow {background:#fffbeb;color:#92400e}\n  .alert {background:#f7fbff;border:1px solid #e1f0ff;border-radius:12px;padding:10px 12px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center}\n  .alert .tag {font-size:11px;color:#2563eb;background:#eaf2ff;border-radius:999px;padding:2px 8px;margin-left:6px}\n  .section-title{font-weight:700;font-size:18px;margin:8px 0}\n  .task-title{font-weight:600;color:#111827;margin-bottom:2px}\n  .task-sub{font-size:12px;color:#6b7280}\n  .overdue{color:#b91c1c !important}\n</style>""", unsafe_allow_html=True)
+st.markdown("""<style>
+  .page {max-width:1200px;margin:0 auto}
+  .card {background:#fff;border:1px solid #e9edf3;border-radius:16px;padding:18px}
+  .kpi h3 {margin:0;font-size:14px;color:#6b7280;font-weight:600}
+  .kpi .num {font-size:28px;font-weight:700;color:#111827;line-height:1}
+  .sub {font-size:12px;color:#6b7280}
+  .badge {display:inline-block;font-size:11px;padding:2px 8px;border-radius:999px;border:1px solid rgba(0,0,0,0.06)}
+  .badge.green {background:#ecfdf5;color:#065f46}
+  .badge.red {background:#fef2f2;color:#991b1b}
+  .badge.yellow {background:#fffbeb;color:#92400e}
+  .alert {background:#f7fbff;border:1px solid #e1f0ff;border-radius:12px;padding:10px 12px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center}
+  .alert .tag {font-size:11px;color:#2563eb;background:#eaf2ff;border-radius:999px;padding:2px 8px;margin-left:6px}
+  .section-title{font-weight:700;font-size:18px;margin:8px 0}
+  .task-title{font-weight:600;color:#111827;margin-bottom:2px}
+  .task-sub{font-size:12px;color:#6b7280}
+  .overdue{color:#b91c1c !important}
+</style>""", unsafe_allow_html=True)
 st.markdown('<div class="page">', unsafe_allow_html=True)
 left, right = st.columns([0.7, 0.3])
 with left:
@@ -57,7 +73,7 @@ else:
             with c_btn:
                 cb1, cb2 = st.columns([0.6,0.4])
                 with cb1:
-                    if st.button("Open", key=f"open_{t['id']}"):
+                    if st.button("Open", key=f"open_task_{t['id']}"):
                         store.set_selected_lead(t["lead_id"])
                         if hasattr(st, "switch_page"):
                             st.switch_page("pages/04_Client_Record.py")

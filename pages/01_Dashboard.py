@@ -16,7 +16,23 @@ def badge(text, bg="#f3f4f6", fg="#374151"):
     st.markdown(f"<span class='badge' style='background:{bg};color:{fg}'> {text} </span>", unsafe_allow_html=True)
 
 st.title("Advisor Dashboard")
-st.markdown("""<style>\n  .page {max-width:1200px;margin:0 auto}\n  .card {background:#fff;border:1px solid #e9edf3;border-radius:16px;padding:18px}\n  .kpi h3 {margin:0;font-size:14px;color:#6b7280;font-weight:600}\n  .kpi .num {font-size:28px;font-weight:700;color:#111827;line-height:1}\n  .sub {font-size:12px;color:#6b7280}\n  .badge {display:inline-block;font-size:11px;padding:2px 8px;border-radius:999px;border:1px solid rgba(0,0,0,0.06)}\n  .badge.green {background:#ecfdf5;color:#065f46}\n  .badge.red {background:#fef2f2;color:#991b1b}\n  .badge.yellow {background:#fffbeb;color:#92400e}\n  .alert {background:#f7fbff;border:1px solid #e1f0ff;border-radius:12px;padding:10px 12px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center}\n  .alert .tag {font-size:11px;color:#2563eb;background:#eaf2ff;border-radius:999px;padding:2px 8px;margin-left:6px}\n  .section-title{font-weight:700;font-size:18px;margin:8px 0}\n  .task-title{font-weight:600;color:#111827;margin-bottom:2px}\n  .task-sub{font-size:12px;color:#6b7280}\n  .overdue{color:#b91c1c !important}\n</style>""", unsafe_allow_html=True)
+st.markdown("""<style>
+  .page {max-width:1200px;margin:0 auto}
+  .card {background:#fff;border:1px solid #e9edf3;border-radius:16px;padding:18px}
+  .kpi h3 {margin:0;font-size:14px;color:#6b7280;font-weight:600}
+  .kpi .num {font-size:28px;font-weight:700;color:#111827;line-height:1}
+  .sub {font-size:12px;color:#6b7280}
+  .badge {display:inline-block;font-size:11px;padding:2px 8px;border-radius:999px;border:1px solid rgba(0,0,0,0.06)}
+  .badge.green {background:#ecfdf5;color:#065f46}
+  .badge.red {background:#fef2f2;color:#991b1b}
+  .badge.yellow {background:#fffbeb;color:#92400e}
+  .alert {background:#f7fbff;border:1px solid #e1f0ff;border-radius:12px;padding:10px 12px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center}
+  .alert .tag {font-size:11px;color:#2563eb;background:#eaf2ff;border-radius:999px;padding:2px 8px;margin-left:6px}
+  .section-title{font-weight:700;font-size:18px;margin:8px 0}
+  .task-title{font-weight:600;color:#111827;margin-bottom:2px}
+  .task-sub{font-size:12px;color:#6b7280}
+  .overdue{color:#b91c1c !important}
+</style>""", unsafe_allow_html=True)
 st.markdown('<div class="page">', unsafe_allow_html=True)
 leads = store.get_leads()
 leads_today = [x for x in leads if x["created"] == date.today()]
@@ -35,7 +51,7 @@ else:
     for lead in leads_today[:6]:
         c1, c2, c3, c4, c5 = st.columns([0.35, 0.15, 0.20, 0.20, 0.10])
         with c1:
-            st.markdown(f"**{{lead['name']}}**")
+            st.markdown(f"**{lead['name']}**")
             st.caption(lead["city"])
         with c2:
             if lead["origin"] == "app":
@@ -45,11 +61,11 @@ else:
             else:
                 badge(lead["origin"].title())
         with c3:
-            st.caption((lead["preference"] + (f" — est. ${{lead['budget']:,}}" if lead["budget"] else "")))
+            st.caption(lead["preference"] + (f" — est. ${lead['budget']:,}" if lead["budget"] else ""))
         with c4:
-            st.caption(f"Timeline: {{lead['timeline']}}")
+            st.caption(f"Timeline: {lead['timeline']}")
         with c5:
-            if st.button("Open", key=f"open_{{lead['id']}}"):
+            if st.button("Open", key=f"open_dash_{lead['id']}"):
                 store.set_selected_lead(lead["id"])
                 if hasattr(st, "switch_page"):
                     st.switch_page("pages/04_Client_Record.py")
