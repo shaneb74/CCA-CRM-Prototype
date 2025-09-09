@@ -116,6 +116,12 @@
       "type": "Financial",
       "pill": "fin",
       "text": "Confirm Medicaid rollover during financial review."
+    },
+    {
+      "id": 3,
+      "type": "General",
+      "pill": "gen",
+      "text": "Keep intake notes date-stamped with initials."
     }
   ]
 }

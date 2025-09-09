@@ -23,27 +23,20 @@ unread = [n for n in data["notifications"] if n["id"] not in st.session_state.di
 hist = [n for n in data["notifications"] if n["id"] in st.session_state.dismissed]
 
 st.subheader("Unread")
-shown=False
-for n in unread:
-    if st.session_state.filter_types.get(n["type"], True):
+if unread:
+    for n in unread:
         c1,c2 = st.columns([12,1])
-        with c1:
-            st.markdown(f"- {n['text']}  
-  <span class='pill {n['pill']}'>{n['type']}</span>", unsafe_allow_html=True)
+        with c1: st.markdown(f"- {n['text']}  \n  <span class='pill {n['pill']}'>{n['type']}</span>", unsafe_allow_html=True)
         with c2:
-            if st.button("✕", key=f"notif_{n['id']}"):
-                st.session_state.dismissed.append(n["id"])
-                shown=True
-if not unread:
+            if st.button("✕", key=f"notif_{n['id']}"): st.session_state.dismissed.append(n["id"])
+else:
     st.caption("No unread.")
 
 st.subheader("History")
-shown=False
-for n in hist:
-    if st.session_state.filter_types.get(n["type"], True):
-        st.markdown(f"- {n['text']}  
-  <span class='pill {n['pill']}'>{n['type']}</span>", unsafe_allow_html=True)
-if not hist:
+if hist:
+    for n in hist:
+        st.markdown(f"- {n['text']}  \n  <span class='pill {n['pill']}'>{n['type']}</span>", unsafe_allow_html=True)
+else:
     st.caption("No history yet.")
 
 st.page_link("pages/01_Advisor_Workspace.py", label="← Back to workspace")

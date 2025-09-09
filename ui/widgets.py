@@ -39,7 +39,6 @@ def tile(title:str, body:str=''):
 def progress(label:str, pct:float):
     st.write(label); st.progress(int(max(0,min(100,pct))))
 
-# New helpers used by Advisor Workspace
 def banner(text:str):
     st.markdown(f"<div class='banner'>{text}</div>", unsafe_allow_html=True)
 
