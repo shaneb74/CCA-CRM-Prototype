@@ -1,13 +1,12 @@
-# pages/02_Advisor_Workspace.py
 import streamlit as st
 from data_loader import load_seed
-from ui.widgets import inject_css, kpi, chips, tile
+from ui.widgets import inject_css, chips, tile
 
-st.set_page_config(page_title="Advisor Workspace", page_icon="💼", layout="wide")
+st.set_page_config(page_title="Advisor Workspace", layout="wide")
 inject_css()
 data = load_seed()
 
-# ---------------- helpers ----------------
+# ---------- helpers ----------
 def get_client(cid):
     for c in data["clients"]:
         if c["id"] == cid:
@@ -18,17 +17,18 @@ def select_client(cid):
     st.session_state["selected_client_id"] = cid
     st.rerun()
 
-# One little per-client store so care needs / notes can be edited without a DB
 def case_state(cid):
     if "case_store" not in st.session_state:
         st.session_state["case_store"] = {}
     if cid not in st.session_state["case_store"]:
+        # defaults per case
         st.session_state["case_store"][cid] = {
-            "needs": [],                # user-set list of care needs
-            "note": "",                 # scratch note
-            "intake_progress": 40,      # visual only
-            "ds_result": None,          # decision support result (plan)
-            "ds_cost": None,            # decision support cost
+            "needs": [],
+            "note": "",
+            "intake_progress": 40,  # visual only, rule-driven later
+            # DS results now display-only with your example defaults
+            "ds_result": {"plan": "Assisted Living", "notes": "Recommended based on care needs"},
+            "ds_cost": {"estimate": "$8,000/mo", "assumptions": "Room, care tier, meds mgmt"},
             "activities": [
                 "Email: Disclosure sent 9/3",
                 "Phone: Spoke with daughter 9/4",
@@ -37,27 +37,14 @@ def case_state(cid):
         }
     return st.session_state["case_store"][cid]
 
-# ---------------- session defaults ----------------
+# ---------- session defaults ----------
 if "selected_client_id" not in st.session_state:
-    st.session_state["selected_client_id"] = data["clients"][0]["id"]
+    st.session_state["selected_client_id"] = load_seed()["clients"][0]["id"]
 
-adv = data["advisors"][0]
-mtd = sum(p["fee_amount"] for p in data["placements"] if p["advisor_id"] == adv["id"])
-goal = adv["goal_monthly"]
-
-# ---------------- top KPIs ----------------
-k1, k2, k3, k4 = st.columns(4)
-with k1: kpi("New leads (today)", "5")
-with k2: kpi("Assigned leads", "12")
-with k3: kpi("Active cases", str(len(data["clients"])))
-with k4: kpi("MTD vs goal", f"${mtd:,.0f} / ${goal:,.0f}", f"{int(mtd/goal*100)}%")
-
-chips(["Overdue: 2", "Tours this week: 3", "Docs pending: 1"])
-
-# ---------------- layout: two columns ----------------
+# ---------- layout: two columns ----------
 left, right = st.columns([1.1, 2.2])
 
-# -------- left: Work Queue (click to load) ----------
+# === Left: Work Queue ===
 with left:
     st.markdown("### Work Queue")
     _view = st.selectbox("Filter", options=["My leads", "All", "Overdue", "Tours"], index=0)
@@ -79,7 +66,7 @@ with left:
                     select_client(c["id"])
         st.divider()
 
-# -------- right: Case Overview (wide) ---------------
+# === Right: Case Overview (wide) ===
 cid = st.session_state["selected_client_id"]
 case = get_client(cid)
 store = case_state(cid)
@@ -89,15 +76,14 @@ with right:
     st.markdown(f"**{case['name']}** • {case['city']}")
     chips([f"Stage: {case['stage']}", f"Priority: {case['priority']}", f"Budget: ${case['budget']:,.0f}"])
 
-    # Quick note
+    # Quick note (lightweight edit)
     store["note"] = st.text_area("Quick note", value=store["note"], placeholder="Add a quick note...", height=80)
 
-    # Intake progress
+    # Intake progress (status bar only; no slider)
     st.markdown("#### Intake")
-    store["intake_progress"] = st.slider("Progress", 0, 100, store["intake_progress"])
     st.progress(store["intake_progress"])
 
-    # Care needs (replaces the confusing checkboxes)
+    # Care needs (simple flags; replaces old confusing checkboxes)
     st.markdown("#### Care needs")
     needs = st.multiselect(
         "Select applicable needs",
@@ -109,24 +95,31 @@ with right:
     if needs:
         chips(needs)
 
-    # Financials stub
+    # Financials (stub)
     st.markdown("#### Financials")
     st.write("Monthly budget, assets, payer source. MTD goal contribution will calculate post-placement.")
 
-    # Decision support results (display-only; launcher moved to left nav)
+    # Decision support results (display-only here)
     st.markdown("#### Decision support (last results)")
-    # Show what we have; if none, show helpful placeholders
-    ds_plan = store["ds_result"] or {"plan": "—", "notes": "No result saved yet"}
-    ds_cost = store["ds_cost"] or {"estimate": "—", "assumptions": "No estimate saved yet"}
+    ds_plan = store["ds_result"]
+    ds_cost = store["ds_cost"]
     tile(f"Recommended: {ds_plan['plan']}", ds_plan.get("notes", ""))
     tile(f"Estimated Cost: {ds_cost['estimate']}", ds_cost.get("assumptions", ""))
 
-    # Activities
+    # Activities log
     st.markdown("#### Activities")
     for a in store["activities"]:
         st.write(f"- {a}")
-    new_act = st.text_input("Log new activity", "")
+    new_act = st.text_input("Log new activity", key=f"add_act_{cid}")
     if new_act:
         store["activities"].insert(0, new_act)
-        st.session_state[f"clear_{cid}"] = ""  # noop anchor to trigger rerun
         st.rerun()
+
+    # Open full record button
+    if st.button("Open full record", use_container_width=False):
+        st.session_state["selected_client_id"] = cid
+        try:
+            # Streamlit 1.29+
+            st.switch_page("pages/03_Client_Record.py")
+        except Exception:
+            st.info("Open the 'Client Record' page from the left navigation.")
