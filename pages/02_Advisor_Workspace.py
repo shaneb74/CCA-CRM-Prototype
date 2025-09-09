@@ -1,86 +1,97 @@
-# 02_Advisor_Workspace.py — Work Queue with attractive cards
+# 02_Advisor_Workspace.py — split-pane list + inline summary, with Open button
 import streamlit as st, store
 from datetime import date, timedelta
 store.init()
+
 def segmented(label, options, default):
     if hasattr(st, "segmented_control"):
         return st.segmented_control(label, options=options, default=default)
     return st.radio(label, options, index=options.index(default), horizontal=True)
+
+def badge(text, bg="#f3f4f6", fg="#374151"):
+    st.markdown(f"<span class='badge' style='background:{bg};color:{fg}'> {text} </span>", unsafe_allow_html=True)
+
 def kpi_card(title, value, sub_html=""):
     with st.container(border=True):
         st.markdown(f"**{title}**")
-        st.markdown(f"<div class='num' style='font-size:28px;font-weight:700'>{value}</div>", unsafe_allow_html=True)
+        st.markdown(f"<div class='num'>{value}</div>", unsafe_allow_html=True)
         if sub_html:
-            st.markdown(f"<div class='sub'>{sub_html}</div>", unsafe_allow_html=True)
-def badge(text, bg="#f3f4f6", fg="#374151"):
-    st.markdown(f"<span class='badge' style='background:{bg};color:{fg}'> {text} </span>", unsafe_allow_html=True)
+            st.markdown(sub_html, unsafe_allow_html=True)
+
 
 st.title("Advisor Workspace")
 st.markdown("""<style>
   .page {max-width:1200px;margin:0 auto}
-  .card {background:#fff;border:1px solid #e9edf3;border-radius:16px;padding:18px}
-  .kpi h3 {margin:0;font-size:14px;color:#6b7280;font-weight:600}
-  .kpi .num {font-size:28px;font-weight:700;color:#111827;line-height:1}
-  .sub {font-size:12px;color:#6b7280}
+  .kpi .num {font-size:28px;font-weight:700;color:#111827}
   .badge {display:inline-block;font-size:11px;padding:2px 8px;border-radius:999px;border:1px solid rgba(0,0,0,0.06)}
   .badge.green {background:#ecfdf5;color:#065f46}
-  .badge.red {background:#fef2f2;color:#991b1b}
   .badge.yellow {background:#fffbeb;color:#92400e}
-  .alert {background:#f7fbff;border:1px solid #e1f0ff;border-radius:12px;padding:10px 12px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center}
-  .alert .tag {font-size:11px;color:#2563eb;background:#eaf2ff;border-radius:999px;padding:2px 8px;margin-left:6px}
-  .section-title{font-weight:700;font-size:18px;margin:8px 0}
+  .rowcard {border:1px solid #e5e7eb;border-radius:14px;padding:12px;background:#fff}
   .task-title{font-weight:600;color:#111827;margin-bottom:2px}
   .task-sub{font-size:12px;color:#6b7280}
-  .overdue{color:#b91c1c !important}
+  .lead-card{border:1px solid #e5e7eb;border-radius:14px;padding:12px;background:#fff}
+  .lead-card:hover{box-shadow:0 0 0 2px #e5e7eb}
+  .summary-card{border:1px solid #e5e7eb;border-radius:14px;padding:16px;background:#fff}
+  .dim{color:#6b7280}
 </style>""", unsafe_allow_html=True)
 st.markdown('<div class="page">', unsafe_allow_html=True)
-left, right = st.columns([0.7, 0.3])
-with left:
-    origin = segmented("Origin", ["All","App","Phone","Hospital"], "All")
-with right:
-    due_filter = segmented("Due", ["All","Today","Upcoming"], "All")
-def origin_match(o):
-    if origin == "All": return True
+
+# Filters
+f1, f2 = st.columns([0.6, 0.4])
+with f1:
+    origin = segmented("Filter", ["All leads","App","Phone","Hospital"], "All leads")
+with f2:
+    stage = segmented("Stage", ["All","Lead Received","Intake","Case Mgmt"], "All")
+
+def origin_ok(o):
+    if origin == "All leads": return True
     return o == {"App":"app","Phone":"phone","Hospital":"hospital"}[origin]
-def due_match(d):
-    if due_filter == "All": return True
-    if due_filter == "Today": return d == date.today()
-    return d > date.today()
-tasks = [t for t in store.get_tasks(True) if origin_match(t["origin"]) and due_match(t["due"])]
-leads = {l["id"]: l for l in store.get_leads()}
-if not tasks:
-    st.info("Nothing in your queue.")
-else:
-    for t in tasks:
-        lead = leads.get(t["lead_id"])
+
+leads = [l for l in store.get_leads() if origin_ok(l["origin"])]
+
+# Selection handling
+sel_id = st.session_state.get("ws_selected_lead") or (leads[0]["id"] if leads else None)
+if sel_id and not any(l["id"] == sel_id for l in leads):
+    sel_id = leads[0]["id"] if leads else None
+st.session_state["ws_selected_lead"] = sel_id
+
+left, right = st.columns([0.44, 0.56])
+
+with left:
+    st.subheader("Work Queue")
+    for l in leads:
         with st.container(border=True):
-            c_accent, c_main, c_chip, c_btn = st.columns([0.03, 0.62, 0.17, 0.18])
-            overdue = t["due"] < date.today()
-            accent = "#dc2626" if (t["priority"] == "High" and overdue) else ("#f59e0b" if t["priority"] == "Med" and overdue else "#d1d5db")
-            with c_accent:
-                st.markdown(f"<div style='width:6px;height:54px;background:{accent};border-radius:10px;'></div>", unsafe_allow_html=True)
-            with c_main:
-                st.markdown(f"<div class='task-title'>{t['title']}</div>", unsafe_allow_html=True)
-                sub = f"Due {t['due'].isoformat()}"
-                if lead:
-                    sub = lead['name'] + " • " + lead['city'] + "  ·  " + sub
-                st.markdown(f"<div class='task-sub'>{sub}</div>", unsafe_allow_html=True)
-            with c_chip:
-                if t["origin"] == "app":
-                    badge("App Lead", "#ecfdf5", "#065f46")
-                else:
-                    badge(t["origin"].title())
-            with c_btn:
-                cb1, cb2 = st.columns([0.6,0.4])
-                with cb1:
-                    if st.button("Open", key=f"open_task_{t['id']}"):
-                        store.set_selected_lead(t["lead_id"])
-                        if hasattr(st, "switch_page"):
-                            st.switch_page("pages/04_Client_Record.py")
-                        else:
-                            st.experimental_rerun()
-                with cb2:
-                    if st.button("✓", key=f"done_{t['id']}", help="Complete"):
-                        store.complete_task(t["id"])
+            st.markdown(f"**{l['name']} — {('Intake' if l['status']=='new' else 'Case Mgmt')}**")
+            st.caption(f"{l['city']}  •  Next: start intake")
+            c1, c2 = st.columns([0.5, 0.5])
+            with c1:
+                if st.button("Open", key=f"open_ws_{l['id']}"):
+                    st.session_state["ws_selected_lead"] = l["id"]
+                    st.experimental_rerun()
+            with c2:
+                if st.button("Client Record", key=f"open_full_{l['id']}"):
+                    store.set_selected_lead(l["id"])
+                    if hasattr(st, "switch_page"):
+                        st.switch_page("pages/04_Client_Record.py")
+                    else:
                         st.experimental_rerun()
+
+with right:
+    st.subheader("Case Overview")
+    current = next((x for x in store.get_leads() if x["id"] == st.session_state.get("ws_selected_lead")), None)
+    if not current:
+        st.info("Select a lead from the queue to see details.")
+    else:
+        with st.container(border=True):
+            st.markdown(f"**{current['name']} • {current['city']}**")
+            st.caption(f"Stage: {'Intake' if current['status']=='new' else 'Case Mgmt'} • Priority: 2 • Budget: ${current['budget']:,}")
+            st.text_area("Quick note", placeholder="Add a quick note...", key=f"note_{current['id']}")
+            st.progress(0.35, text="Intake progress")
+            st.selectbox("Care needs", ["Choose options","Assistance with ADLs","Memory care", "Skilled nursing"], index=0)
+            st.markdown("### Decision support (last results)")
+            with st.container(border=True):
+                st.markdown("**Recommended:** Assisted Living")
+                st.markdown("**Estimated cost:** $4,500 / month")
+            st.button("Open full client record", key=f"open_full_summary_{current['id']}", on_click=lambda: store.set_selected_lead(current['id']))
+
 st.markdown('</div>', unsafe_allow_html=True)
