@@ -18,16 +18,15 @@ unread = [n for n in data["notifications"] if n["id"] not in st.session_state.di
 st.markdown("<div class='sticky'>", unsafe_allow_html=True)
 h1,h2,h3,h4,h5 = st.columns([2,1,1,1,1])
 with h1:
-    q = st.text_input("Global search", placeholder="Search clients, communities, prospects…", label_visibility="collapsed")
+    st.text_input("Global search", placeholder="Search clients, communities, prospects…", label_visibility="collapsed")
 with h2: kpi("New Leads (Today)","5")
 with h3: kpi("Assigned Leads","12")
 with h4: kpi("Active Cases","3")
 with h5:
     kpi("MTD vs Goal", f"${mtd:,.0f} / ${goal:,.0f}", f"{int(mtd/goal*100)}%")
-    st.page_link("pages/03_🔔_Notifications.py", label=f"🔔 Notifications ({len(unread)})")
+    st.page_link("pages/03_Notifications.py", label=f"🔔 Notifications ({len(unread)})")
 st.markdown("</div>", unsafe_allow_html=True)
 
-st.write("")
 t1,t2,t3 = st.columns(3)
 with t1: card("Today","2 tasks due • 1 overdue")
 with t2: card("Comms","1 unread family email • 1 community follow-up")
@@ -46,8 +45,7 @@ with left:
     with st.expander("Action Queue (prioritized)", expanded=True):
         items = sorted(data["tasks"], key=lambda x: -x["importance"])
         for item in items:
-            line = f"{item['text']}  ·  {item['due']}"
-            st.checkbox(line, key=f"chk_{item['id']}")
+            st.checkbox(f"{item['text']}  ·  {item['due']}", key=f"chk_{item['id']}")
     st.write("")
     st.subheader("Pipeline Board")
     cols = st.columns(4)
@@ -75,18 +73,10 @@ with right:
             st.markdown(f"**{c['name']}** — {c['city']}")
             st.caption(f"Stage: {c['stage']}  ·  Budget: ${c['budget']:,.0f}")
             st.write("")
-            st.markdown("**Quick actions**")
-            st.button("Open Intake")
-            st.button("Start Financial Review")
-            st.button("Schedule Tour")
-            st.button("Create Invoice")
+            st.markdown("**Quick actions**"); st.button("Open Intake"); st.button("Start Financial Review"); st.button("Schedule Tour"); st.button("Create Invoice")
             st.write("")
-            st.markdown("**Recent activity**")
-            st.write("- Called representative; left voicemail")
-            st.write("- Received self-service intake")
+            st.markdown("**Recent activity**"); st.write("- Called representative; left voicemail"); st.write("- Received self-service intake")
             st.write("")
-            st.markdown("**Docs**")
-            st.write("- State Disclosure — Signed")
-            st.write("- RN Assessment — Pending")
+            st.markdown("**Docs**"); st.write("- State Disclosure — Signed"); st.write("- RN Assessment — Pending")
     else:
         st.caption("Select a client card from the Pipeline Board to open details here.")
