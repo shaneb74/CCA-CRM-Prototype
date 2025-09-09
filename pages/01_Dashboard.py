@@ -8,7 +8,7 @@ st.markdown("<h2 style='margin-bottom:0;'>Advisor Dashboard</h2>", unsafe_allow_
 
 # At-a-glance section
 with st.container():
-    st.markdown("<div class='glance-card'>", unsafe_allow_html=False)
+    #st.markdown("<div class='glance-card'>", unsafe_allow_html=False)
     st.markdown("<div class='glance-title'>At a glance</div>", unsafe_allow_html=True)
     col1, col2, col3, col4 = st.columns([1,1,1,1.3], gap="large")
 
