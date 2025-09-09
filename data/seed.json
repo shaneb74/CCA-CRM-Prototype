@@ -6,90 +6,6 @@
       "goal_monthly": 40000
     }
   ],
-  "stages": [
-    "Lead Received",
-    "Intake",
-    "Case Mgmt",
-    "Placement"
-  ],
-  "clients": [
-    {
-      "id": "cli_1",
-      "name": "Margaret Holt",
-      "city": "Seattle, WA",
-      "stage": "Intake",
-      "priority": 2,
-      "next": "Call representative",
-      "tags": [
-        "fall risk"
-      ],
-      "budget": 4500
-    },
-    {
-      "id": "cli_2",
-      "name": "Raymond Cole",
-      "city": "Tacoma, WA",
-      "stage": "Case Mgmt",
-      "priority": 1,
-      "next": "Request RN assessment",
-      "tags": [
-        "memory"
-      ],
-      "budget": 5200
-    },
-    {
-      "id": "cli_3",
-      "name": "Grace Lane",
-      "city": "Bellevue, WA",
-      "stage": "Lead Received",
-      "priority": 3,
-      "next": "Start intake",
-      "tags": [],
-      "budget": 3800
-    },
-    {
-      "id": "cli_4",
-      "name": "Nora Singh",
-      "city": "Kirkland, WA",
-      "stage": "Placement",
-      "priority": 2,
-      "next": "Prepare invoice",
-      "tags": [
-        "wheelchair"
-      ],
-      "budget": 6100
-    }
-  ],
-  "tasks": [
-    {
-      "id": "t1",
-      "type": "task",
-      "text": "Call lead John Doe",
-      "due": "today",
-      "importance": 2
-    },
-    {
-      "id": "t2",
-      "type": "task",
-      "text": "Schedule case review (Holt)",
-      "due": "overdue",
-      "importance": 3
-    },
-    {
-      "id": "t3",
-      "type": "comm",
-      "text": "Reply to family email (Cole)",
-      "due": "today",
-      "importance": 2
-    },
-    {
-      "id": "t4",
-      "type": "comm",
-      "text": "Confirm tour time (Cedar Grove)",
-      "due": "tomorrow",
-      "importance": 1
-    }
-  ],
   "placements": [
     {
       "client_id": "cli_4",
@@ -102,26 +18,6 @@
       "advisor_id": "adv_1",
       "fee_amount": 12000,
       "move_in": "2025-09-08"
-    }
-  ],
-  "notifications": [
-    {
-      "id": 1,
-      "type": "Compliance",
-      "pill": "comp",
-      "text": "Upload signed Disclosure before tours."
-    },
-    {
-      "id": 2,
-      "type": "Financial",
-      "pill": "fin",
-      "text": "Confirm Medicaid rollover during financial review."
-    },
-    {
-      "id": 3,
-      "type": "General",
-      "pill": "gen",
-      "text": "Keep intake notes date-stamped with initials."
     }
   ]
 }
