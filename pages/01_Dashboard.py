@@ -7,7 +7,6 @@ st.set_page_config(page_title="Advisor Dashboard", page_icon="🧭", layout="wid
 inject_css()
 data = load_seed()
 
-# Notifications setup
 if "notifications" not in st.session_state:
     st.session_state.notifications = [
         {"id": 1, "type": "Compliance", "pill": "comp", "text": "Upload signed Disclosure before scheduling tours."},
@@ -17,7 +16,6 @@ if "notifications" not in st.session_state:
 if "dismissed" not in st.session_state:
     st.session_state.dismissed = []
 
-# ---- At-a-glance: sticky KPI band ----
 adv = data["advisors"][0]
 mtd = sum(p["fee_amount"] for p in data["placements"] if p["advisor_id"] == adv["id"])
 goal = adv["goal_monthly"]
@@ -30,21 +28,15 @@ delta_goal = f"{pct}% of goal"
 
 def _render_kpis():
     c1, c2, c3, c4 = st.columns([1,1,1,1])
-    with c1:
-        kpi_pill("New leads (today)", "5", delta=delta_new, intent="pos")
-    with c2:
-        kpi_pill("Assigned leads", "12", delta=delta_assigned, intent="pos")
-    with c3:
-        kpi_pill("Active cases", str(len(data["clients"])), delta=delta_active, intent="neg")
-    with c4:
-        kpi_pill("MTD vs goal", f"${mtd:,.0f} / ${goal:,.0f}", subtitle=f"{pct}% achieved", delta=delta_goal, intent="neu")
+    with c1: kpi_pill("New leads (today)", "5", delta=delta_new, intent="pos")
+    with c2: kpi_pill("Assigned leads", "12", delta=delta_assigned, intent="pos")
+    with c3: kpi_pill("Active cases", str(len(data["clients"])), delta=delta_active, intent="neg")
+    with c4: kpi_pill("MTD vs goal", f"${mtd:,.0f} / ${goal:,.0f}", subtitle=f"{pct}% achieved", delta=delta_goal, intent="neu")
 
 kpi_band(_render_kpis)
 
-# micro context chips under band
 chips(["This week: 2 placements", "Pending: $15,500", "Tours booked: 3"])
 
-# ---- Notifications banners ----
 remaining = [n for n in st.session_state.notifications if n["id"] not in st.session_state.dismissed]
 for n in remaining:
     col_text, col_x = st.columns([12,1])
@@ -52,7 +44,6 @@ for n in remaining:
     with col_x:
         if st.button("✕", key=f"dismiss_{n['id']}"): st.session_state.dismissed.append(n["id"])
 
-# ---- Main two columns ----
 left, right = st.columns([1.05,1])
 with left:
     with st.expander("Tasks & Queues", expanded=True):
