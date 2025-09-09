@@ -7,55 +7,78 @@ st.set_page_config(page_title="Advisor Workspace", page_icon="💼", layout="wid
 inject_css()
 data = load_seed()
 
+# ---------- tiny helpers ----------
+def get_client(cid):
+    for c in data["clients"]:
+        if c["id"] == cid:
+            return c
+    return data["clients"][0]
+
+def select_client(cid):
+    st.session_state["selected_client_id"] = cid
+    # clear per-case mock results when switching so you don't carry over noise
+    st.session_state.pop("ds_result", None)
+    st.session_state.pop("ds_cost", None)
+    st.rerun()
+
+# ---------- session defaults ----------
+if "selected_client_id" not in st.session_state:
+    st.session_state["selected_client_id"] = data["clients"][0]["id"]
+
 adv = data["advisors"][0]
 mtd = sum(p["fee_amount"] for p in data["placements"] if p["advisor_id"] == adv["id"])
 goal = adv["goal_monthly"]
 
-# Top KPIs
+# ---------- top KPIs ----------
 k1, k2, k3, k4 = st.columns(4)
-with k1:
-    kpi("New leads (today)", "5")
-with k2:
-    kpi("Assigned leads", "12")
-with k3:
-    kpi("Active cases", "3")
-with k4:
-    kpi("MTD vs goal", f"${mtd:,.0f} / ${goal:,.0f}", f"{int(mtd/goal*100)}%")
+with k1: kpi("New leads (today)", "5")
+with k2: kpi("Assigned leads", "12")
+with k3: kpi("Active cases", str(len(data["clients"])))
+with k4: kpi("MTD vs goal", f"${mtd:,.0f} / ${goal:,.0f}", f"{int(mtd/goal*100)}%")
 
 chips(["Overdue: 2", "Tours this week: 3", "Docs pending: 1"])
 
-# Layout columns
+# ---------- layout ----------
 left, center, right = st.columns([1.2, 1.8, 1.1])
 
-# Left: work queue
+# ---------- left: Work Queue (click to load) ----------
 with left:
     st.markdown("### Work Queue")
-    view = st.selectbox("Filter", options=["My leads", "All", "Overdue", "Tours"], index=0)
+    _view = st.selectbox("Filter", options=["My leads", "All", "Overdue", "Tours"], index=0)
+
     for c in data["clients"]:
-        st.markdown(
-            f"**{c['name']}** — {c['stage']}  \n"
-            f"<span class='muted small'>{c['city']} • Next: {c['next']}</span>",
-            unsafe_allow_html=True,
-        )
+        is_sel = c["id"] == st.session_state["selected_client_id"]
+        row = st.container()
+        with row:
+            c1, c2 = st.columns([0.8, 0.2])
+            with c1:
+                st.markdown(
+                    f"**{c['name']}** — {c['stage']}  \n"
+                    f"<span class='muted small'>{c['city']} • Next: {c['next']}</span>",
+                    unsafe_allow_html=True,
+                )
+            with c2:
+                label = "Selected" if is_sel else "Open"
+                disabled = is_sel
+                if st.button(label, key=f"open_{c['id']}", use_container_width=True, disabled=disabled):
+                    select_client(c["id"])
         st.divider()
 
-# Center: case details (select first for now)
-case = data["clients"][0]
+# ---------- center: Case Overview (for selected client) ----------
+case = get_client(st.session_state["selected_client_id"])
 with center:
     st.markdown("### Case Overview")
     st.markdown(f"**{case['name']}** • {case['city']}")
     chips([f"Stage: {case['stage']}", f"Priority: {case['priority']}", f"Budget: ${case['budget']:,.0f}"])
+
     st.text_area("Quick note", placeholder="Add a quick note...", height=80)
 
     st.markdown("#### Intake")
     st.progress(40)
     c1, c2, c3 = st.columns(3)
-    with c1:
-        st.checkbox("Medical", value=True)
-    with c2:
-        st.checkbox("Mobility", value=False)
-    with c3:
-        st.checkbox("Cognition", value=False)
+    with c1: st.checkbox("Medical", value=True)
+    with c2: st.checkbox("Mobility", value=False)
+    with c3: st.checkbox("Cognition", value=False)
 
     st.markdown("#### Financials")
     st.write("Monthly budget, assets, payer source. MTD goal contribution will calculate post-placement.")
@@ -65,7 +88,7 @@ with center:
     st.write("- Phone: Spoke with daughter 9/4")
     st.write("- Tour: Cedar Grove 9/7")
 
-# Right: QRG & decision support
+# ---------- right: QRG / Personas / Decision Support ----------
 with right:
     st.markdown("<div class='ctx-panel'>", unsafe_allow_html=True)
 
