@@ -1,52 +1,47 @@
-
-# ui_chrome.py  — safe page config + sidebar grouping + redirect hook
 import streamlit as st
 
-def page_config(title: str, icon: str = "📋", layout: str = "wide"):
-    """Safe wrapper around st.set_page_config; only runs once per session."""
-    flag = "_cca_cfg_set"
-    if not st.session_state.get(flag):
-        try:
-            st.set_page_config(page_title=title, page_icon=icon, layout=layout)
-        except Exception:
-            pass
-        st.session_state[flag] = True
+# --- single-run guards ---
+def _once_key()->str:
+    return "_page_config_applied"
 
-def _consume_pending_redirect():
+def _safe_set_page_config():
+    if st.session_state.get(_once_key()):
+        return
+    try:
+        st.set_page_config(page_title="CCA CRM Prototype", page_icon="📋", layout="wide")
+    except Exception:
+        # Already set elsewhere in the same run — ignore
+        pass
+    st.session_state[_once_key()] = True
+
+def _consume_redirect():
+    """If a previous click asked us to go somewhere, do it once at start of run."""
     dest = st.session_state.pop("_goto_page", None)
     if not dest:
         return
     try:
         if hasattr(st, "switch_page"):
             st.switch_page(dest)
-        else:
-            st.experimental_rerun()
+            return
     except Exception:
         pass
+    # Fallback: do nothing (Cloud rerun will keep state; links still work from hub).
 
-def _decorate_sidebar_with_workflow_divider():
+def _decorate_sidebar_workflows():
+    # Visually group 90/91/92 workflow pages under a divider + label
     css = """
     <style>
-      section[data-testid="stSidebar"]
-        a[data-testid="stSidebarNavLink"][href*="90_Intake_Workflow"]{
-          margin-top:14px; padding-top:12px; border-top:1px solid #e5e7eb;
-        }
-      section[data-testid="stSidebar"]
-        a[data-testid="stSidebarNavLink"][href*="90_Intake_Workflow"]::before{
-          content:"Workflows"; display:block; font-size:12px; color:#6b7280;
-          margin-bottom:6px; letter-spacing:.02em;
-        }
+    section[data-testid="stSidebar"] a[data-testid="stSidebarNavLink"][href*="pages/90_"]{
+      margin-top:14px; padding-top:12px; border-top:1px solid #e5e7eb;
+    }
+    section[data-testid="stSidebar"] a[data-testid="stSidebarNavLink"][href*="pages/90_"]::before{
+      content:"Workflows"; display:block; font-size:12px; color:#6b7280; margin-bottom:6px;
+    }
     </style>
     """
-    try:
-        import streamlit as st
-        st.markdown(css, unsafe_allow_html=True)
-    except Exception:
-        pass
+    st.markdown(css, unsafe_allow_html=True)
 
-def apply_chrome(title: str = None, icon: str = "📋", layout: str = "wide"):
-    """Call this first thing on every page."""
-    _consume_pending_redirect()
-    if title:
-        page_config(title, icon, layout)
-    _decorate_sidebar_with_workflow_divider()
+def apply_chrome():
+    _safe_set_page_config()
+    _consume_redirect()
+    _decorate_sidebar_workflows()
