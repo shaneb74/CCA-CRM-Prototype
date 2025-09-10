@@ -1,3 +1,4 @@
+# 02_Advisor_Workspace.py — button label updated
 import streamlit as st
 import store
 
@@ -42,7 +43,7 @@ with left:
             st.caption(f"{l['city']}  •  Next: start intake")
             c1, c2 = st.columns([0.5, 0.5])
             with c1:
-                if st.button("Open", key=f"open_ws_{l['id']}"):
+                if st.button("View Record Summary", key=f"open_ws_{l['id']}"):
                     st.session_state["ws_selected_lead"] = l["id"]
                     st.experimental_rerun()
             with c2:
@@ -64,19 +65,19 @@ with right:
             st.caption(f"Stage: {'Intake' if current['status']=='new' else 'Case Mgmt'} • Priority: 2 • Budget: ${current['budget']:,}")
             pct = store.get_progress(current["id"])
             st.progress(pct, text="Intake progress")
-            with st.expander("Adjust intake progress", expanded=False):
-                new_pct = st.slider("Progress", 0.0, 1.0, step=0.05, value=pct, key=f"slider_{current['id']}")
-                if st.button("Save progress", key=f"save_{current['id']}"):
-                    store.set_progress(current["id"], new_pct)
-                    st.toast("Progress updated")
-                    st.experimental_rerun()
-
             st.text_area("Quick note", placeholder="Add a quick note...", key=f"note_{current['id']}")
             st.selectbox("Care needs", ["Choose options","Assistance with ADLs","Memory care", "Skilled nursing"], index=0)
             st.markdown("### Decision support (last results)")
             with st.container(border=True):
-                st.markdown("**Recommended:** Assisted Living")
-                st.markdown("**Estimated cost:** $4,500 / month")
-            st.button("Open full client record", key=f"open_full_summary_{current['id']}", on_click=lambda: store.set_selected_lead(current['id']))
+                rec = current.get("ds_recommendation", "Assisted Living")
+                est = current.get("ds_est_cost", 4500)
+                st.markdown(f"**Recommended:** {rec}")
+                st.markdown(f"**Estimated cost:** ${est:,.0f} / month")
+            if st.button("Open full client record", key=f"open_full_summary_{current['id']}"):
+                store.set_selected_lead(current['id'])
+                if hasattr(st, 'switch_page'):
+                    st.switch_page('pages/04_Client_Record.py')
+                else:
+                    st.experimental_rerun()
 
 st.markdown('</div>', unsafe_allow_html=True)

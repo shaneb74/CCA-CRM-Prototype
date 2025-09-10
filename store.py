@@ -7,7 +7,7 @@ def init():
     if "tasks" not in st.session_state:
         st.session_state.tasks = _seed_tasks()
     st.session_state.setdefault("selected_lead_id", None)
-    st.session_state.setdefault("case_steps", {})  # restored for Client Record
+    st.session_state.setdefault("case_steps", {})  # used on Client Record
 
 def get_leads():
     return st.session_state.leads
@@ -54,6 +54,7 @@ def get_selected_lead_id():
     return st.session_state.selected_lead_id
 
 def _seed_leads():
+    # Added per-lead decision support mock results and estimated monthly costs
     return [
         {
             "id": "LD-1001",
@@ -68,6 +69,8 @@ def _seed_leads():
             "assigned_to": None,
             "status": "new",
             "progress": 0.35,
+            "ds_recommendation": "Assisted Living",
+            "ds_est_cost": 4500,
         },
         {
             "id": "LD-1002",
@@ -82,6 +85,8 @@ def _seed_leads():
             "assigned_to": "Advisor A",
             "status": "new",
             "progress": 0.70,
+            "ds_recommendation": "In-Home Care",
+            "ds_est_cost": 8000,
         },
         {
             "id": "LD-0999",
@@ -96,6 +101,8 @@ def _seed_leads():
             "assigned_to": "Advisor B",
             "status": "in_progress",
             "progress": 0.15,
+            "ds_recommendation": "Memory Care",
+            "ds_est_cost": 12500,
         },
     ]
 
