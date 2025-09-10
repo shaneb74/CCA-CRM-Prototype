@@ -1,14 +1,17 @@
 
-# 00_Workflows.py — Workflows hub (hidden from sidebar)
+# 00_Workflows.py — Workflows hub (now with correct page_config and hidden from nav)
 import streamlit as st
-import store
-from ui_chrome import hide_sidebar_page
 
-# Hide this page from the left nav (but keep it routable)
-hide_sidebar_page("00_Workflows")
+# MUST be the first Streamlit call on the page
+st.set_page_config(page_title="Workflows", page_icon="🧭", layout="wide")
+
+import store
+from ui_chrome import hide_pages
+
+# Hide this hub everywhere
+hide_pages(["00_Workflows"])
 
 store.init()
-st.set_page_config(page_title="Workflows", page_icon="🧭", layout="wide")
 
 st.title("Workflows")
 

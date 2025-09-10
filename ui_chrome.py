@@ -1,16 +1,12 @@
 
-# ui_chrome.py — tiny helpers for UI chrome tweaks
+# ui_chrome.py — helpers for hiding sidebar pages
 import streamlit as st
 
-def hide_sidebar_page(href_substring: str):
-    """Hide a sidebar nav link whose href contains the given substring.
-    Example: hide_sidebar_page("00_Workflows")
-    """
-    css = f"""
-    <style>
-    section[data-testid="stSidebar"] a[href*="{href_substring}"] {{
-        display: none !important;
-    }}
-    </style>
-    """
+def hide_pages(hrefs: list[str]):
+    """Hide any sidebar link whose href contains one of the given substrings.
+    Example: hide_pages(["00_Workflows", "06_Intake_Workflow"])"""
+    if not hrefs:
+        return
+    selectors = ",".join([f'section[data-testid="stSidebar"] a[href*="{h}"]' for h in hrefs])
+    css = f"""<style>{selectors} {{ display: none !important; }}</style>"""
     st.markdown(css, unsafe_allow_html=True)
