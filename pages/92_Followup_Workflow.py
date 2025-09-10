@@ -14,8 +14,7 @@ def boot():
         "90_Intake_Workflow",
         "91_Placement_Workflow",
         "92_Followup_Workflow",
-    ])
-boot()  
+    ]) 
 
 lead = store.get_lead(store.get_selected_lead_id()) if store.get_selected_lead_id() else None
 if not lead:
