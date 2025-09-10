@@ -1,31 +1,54 @@
-# 04_Client_Record.py — hardened against missing session keys
+# 04_Client_Record.py — with client search
 import streamlit as st
 from datetime import date
 import store
 
-store.init()  # ensure session keys exist
+store.init()
 
 st.title("Case Overview")
 
-# soft styles
-st.markdown(
-    '<style>.page{max-width:1200px;margin:0 auto}.note{color:#6b7280}</style>',
-    unsafe_allow_html=True,
-)
+# Styles
+st.markdown('<style>.page{max-width:1200px;margin:0 auto}.note{color:#6b7280}</style>', unsafe_allow_html=True)
 st.markdown('<div class="page">', unsafe_allow_html=True)
 
-# Ensure case_steps exists even if store.init changes in the future
+# Ensure case_steps exists
 if "case_steps" not in st.session_state:
     st.session_state.case_steps = {}
 
-lead_id = store.get_selected_lead_id()
-lead = store.get_lead(lead_id) if lead_id else None
-if not lead:
-    options = {f"{x['name']} ({x['id']})": x["id"] for x in store.get_leads()}
-    selected = st.selectbox("Select a lead", list(options.keys()))
-    store.set_selected_lead(options[selected])
-    lead = store.get_lead(store.get_selected_lead_id())
+# ------ Search UI ------
+st.subheader("Find a client")
+q = st.text_input("Search by first or last name", placeholder="Type to filter: e.g., John, Smith, Alvarez", key="client_search_q")
 
+leads = store.get_leads()
+def _matches(lead, q):
+    if not q:
+        return True
+    ql = q.strip().lower()
+    return ql in lead["name"].lower()
+
+filtered = [l for l in leads if _matches(l, q)]
+
+# Selected lead logic
+current_id = store.get_selected_lead_id()
+# If no selection or selection not in filtered, pick first filtered
+if not current_id or not any(l["id"] == current_id for l in filtered):
+    if filtered:
+        current_id = filtered[0]["id"]
+        store.set_selected_lead(current_id)
+
+# Let user switch among filtered results
+if filtered:
+    options = {f"{x['name']} ({x['id']}) — {x['city']}": x["id"] for x in filtered}
+    sel_label = st.selectbox("Matching clients", list(options.keys()), index=list(options.values()).index(current_id) if current_id in options.values() else 0)
+    store.set_selected_lead(options[sel_label])
+else:
+    st.info("No clients match your search.")
+
+lead = store.get_lead(store.get_selected_lead_id()) if filtered else None
+if not lead:
+    st.stop()
+
+# ------ Header summary ------
 if lead["origin"] == "app":
     st.success(f"Origin: App Submission — Guided Care Plan completed on {lead['created'].isoformat()}")
 elif lead["origin"] == "hospital":
@@ -46,6 +69,7 @@ with h4:
 
 st.divider()
 
+# ------ Two-column detail ------
 c1, c2 = st.columns([0.55, 0.45])
 with c1:
     st.subheader("Info from App")
@@ -71,6 +95,14 @@ with c2:
 
 st.divider()
 
+# Decision support block
+st.subheader("Decision Support")
+rec = lead.get("ds_recommendation", "Assisted Living")
+est = lead.get("ds_est_cost", 4500)
+st.markdown(f"**Recommended:** {rec}")
+st.markdown(f"**Estimated cost:** ${est:,.0f} / month")
+
+# Footer actions
 qa1, qa2, qa3 = st.columns([0.25,0.25,0.5])
 with qa1:
     if st.button("Assign to me"):
