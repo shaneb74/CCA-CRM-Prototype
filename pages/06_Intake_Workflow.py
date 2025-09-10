@@ -1,6 +1,5 @@
-# 06_Intake_Workflow.py — unchanged core, ensures it uses intake_lead_id
+# 06_Intake_Workflow.py — guard: only assigned advisor can edit
 import streamlit as st
-from datetime import date
 import store
 
 store.init()
@@ -13,8 +12,19 @@ if not lead:
     st.info("No client selected for intake. Go back to Client Record and click Start Intake.")
     st.stop()
 
+current_user = (getattr(store, "CURRENT_USER", "") or "").strip().lower()
+assigned_to = (lead.get("assigned_to") or "").strip().lower()
+mine = current_user == assigned_to
+
 st.caption(f"Client: {lead['name']} ({lead['id']}) — {lead['city']} • Assigned: {lead.get('assigned_to') or 'Unassigned'}")
 
+if not mine:
+    st.error("Only the assigned advisor can run intake for this client.")
+    if hasattr(st, "page_link"):
+        st.page_link("pages/04_Client_Record.py", label="Back to Client Record →", icon="↩️")
+    st.stop()
+
+# ---- Normal intake UI (unchanged) ----
 st.session_state.setdefault("intake_data", {})
 draft = st.session_state["intake_data"].get(lead_id, {
     "contact": {"first_name":"", "last_name":"", "phone":"", "email":"", "best_time":""},
@@ -78,5 +88,3 @@ with a2:
             st.switch_page("pages/04_Client_Record.py")
         else:
             st.page_link("pages/04_Client_Record.py", label="Back to Client Record →", icon="↩️")
-
-st.caption("Tip: If the Intake Workflow doesn't auto-navigate, use the link shown and consider upgrading Streamlit to enable st.switch_page.")
