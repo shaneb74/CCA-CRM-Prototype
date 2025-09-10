@@ -3,6 +3,12 @@ from datetime import date, timedelta
 import streamlit as st
 from models import Lead, Task, Advisor, Origin, Status, Priority
 
+try:
+    from ui_chrome import hide_default
+    hide_default()
+except Exception:
+    pass
+
 # --- App-wide "current user" (mock) ---
 CURRENT_USER = "Kelsey Jochum"
 
