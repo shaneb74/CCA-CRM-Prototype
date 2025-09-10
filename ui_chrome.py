@@ -1,62 +1,48 @@
 # ui_chrome.py
 import streamlit as st
 
-def _consume_pending_redirect():
-    """If a prior click scheduled a redirect, do it immediately on top-of-run."""
-    dest = st.session_state.pop("_goto_page", None)
-    if not dest:
-        return
+def _set_wide(page_title: str | None, page_icon: str | None):
     try:
-        if hasattr(st, "switch_page"):
-            st.switch_page(dest)
+        st.set_page_config(
+            page_title=page_title or "CCA CRM Prototype",
+            page_icon=page_icon or "📋",
+            layout="wide",
+        )
     except Exception:
-        # If switch_page isn't available, do nothing; user stays on current page.
-        # We don't re-set the flag to avoid loops.
+        # It's already been set on this run; ignore silently.
         pass
 
-def set_wide():
-    """Safe wide layout; ignore if already set elsewhere."""
-    try:
-        st.set_page_config(page_title="CCA CRM Prototype", page_icon="📋", layout="wide")
-    except Exception:
-        pass
-
-def decorate_sidebar_with_workflow_divider():
-    """
-    Visually separate workflow pages; assumes you've renamed them 90/91/92_*.
-    """
+def _decorate_sidebar_group():
     css = """
     <style>
-      section[data-testid="stSidebar"] { --divider:#e5e7eb; --muted:#6b7280; }
-      section[data-testid="stSidebar"] a[data-testid="stSidebarNavLink"][href*="90_Intake_Workflow"]{
+    section[data-testid="stSidebar"] { --divider:#e5e7eb; --muted:#6b7280; }
+    section[data-testid="stSidebar"] a[data-testid="stSidebarNavLink"][href*="90_Intake_Workflow"]{
         margin-top:14px; padding-top:12px; border-top:1px solid var(--divider);
-      }
-      section[data-testid="stSidebar"] a[data-testid="stSidebarNavLink"][href*="90_Intake_Workflow"]::before{
-        content:"Workflows"; display:block; font-size:12px; color:var(--muted); margin-bottom:6px; letter-spacing:.02em;
-      }
-      section[data-testid="stSidebar"] a[data-testid="stSidebarNavLink"][href*="90_Intake_Workflow"],
-      section[data-testid="stSidebar"] a[data-testid="stSidebarNavLink"][href*="91_Placement_Workflow"],
-      section[data-testid="stSidebar"] a[data-testid="stSidebarNavLink"][href*="92_Followup_Workflow"]{
+    }
+    section[data-testid="stSidebar"] a[data-testid="stSidebarNavLink"][href*="90_Intake_Workflow"]::before{
+        content:"Workflows"; display:block; font-size:12px; color:var(--muted);
+        margin-bottom:6px; letter-spacing:.02em;
+    }
+    section[data-testid="stSidebar"] a[data-testid="stSidebarNavLink"][href*="90_Intake_Workflow"],
+    section[data-testid="stSidebar"] a[data-testid="stSidebarNavLink"][href*="91_Placement_Workflow"],
+    section[data-testid="stSidebar"] a[data-testid="stSidebarNavLink"][href*="92_Followup_Workflow"]{
         opacity:.95;
-      }
-      footer, #MainMenu { visibility:hidden; }
+    }
     </style>
     """
     st.markdown(css, unsafe_allow_html=True)
 
-def hide_default():
-    """
-    Backwards-compatible entry point many pages already import.
-    Runs redirect consumption early, then minimal chrome.
-    """
-    _consume_pending_redirect()
-    # Minimal chrome (kept here so old imports still have some effect)
-    st.markdown("<style>footer,#MainMenu{visibility:hidden;}</style>", unsafe_allow_html=True)
+def _consume_pending_redirect():
+    dest = st.session_state.pop("_goto_page", None)
+    if dest:
+        try:
+            if hasattr(st, "switch_page"):
+                st.switch_page(dest)
+        except Exception:
+            pass
 
-def apply_chrome():
-    """
-    One call to rule them all. Use this if you want the full treatment.
-    """
+def apply_chrome(page_title: str | None = None, page_icon: str | None = None):
+    """Call this as the first lines of every page."""
+    _set_wide(page_title, page_icon)
     _consume_pending_redirect()
-    set_wide()
-    decorate_sidebar_with_workflow_divider()
+    _decorate_sidebar_group()
