@@ -1,4 +1,4 @@
-# 04_Client_Record.py — Add agent filter and highlight 'Assign to me' if unassigned
+# 04_Client_Record.py — clearer search placement + agent names
 import streamlit as st
 from datetime import date
 import store
@@ -10,31 +10,26 @@ st.markdown('<style>.page{max-width:1200px;margin:0 auto}.note{color:#6b7280}</s
 st.markdown('<div class="page">', unsafe_allow_html=True)
 
 # Ensure case_steps exists
-if "case_steps" not in st.session_state:
-    st.session_state.case_steps = {}
+st.session_state.setdefault("case_steps", {})
 
-# --------- Filters: Agent + Search ---------
-cols = st.columns([0.5, 0.5])
-with cols[0]:
-    leads_all = store.get_leads()
-    agents = sorted({l["assigned_to"] for l in leads_all if l.get("assigned_to")}) or ["Advisor A"]
-    agent_filter = st.selectbox("Filter by advisor", ["All advisors"] + agents, index=0)
-with cols[1]:
+# --------- Filters: Agent first, then visible search ---------
+leads_all = store.get_leads()
+agents = sorted({l.get("assigned_to") for l in leads_all if l.get("assigned_to")}) or ["Unassigned"]
+agent_filter = st.selectbox("Filter by advisor", ["All advisors"] + agents, index=0)
+
+with st.container(border=True):
+    st.caption("Search by first or last name")
     def _clear_search():
         st.session_state.client_search_q = ""
-    q = st.text_input("Search by first or last name", placeholder="Type to filter: e.g., John, Smith, Alvarez", key="client_search_q")
+    q = st.text_input("", placeholder="Type to filter: e.g., John, Smith, Alvarez", key="client_search_q")
     if q:
         st.button("Show all clients", on_click=_clear_search)
 
 def _match_agent(l):
-    if agent_filter == "All advisors":
-        return True
-    return l.get("assigned_to") == agent_filter
+    return True if agent_filter == "All advisors" else l.get("assigned_to") == agent_filter
 
 def _match_name(l):
-    if not q:
-        return True
-    return q.strip().lower() in l["name"].lower()
+    return True if not q else q.strip().lower() in l["name"].lower()
 
 filtered = [l for l in leads_all if _match_agent(l) and _match_name(l)]
 
@@ -51,19 +46,18 @@ if filtered:
     sel_label = st.selectbox("Matching clients", list(options.keys()), index=idx)
     store.set_selected_lead(options[sel_label])
 else:
-    st.info("No clients match your filter/search. Adjust filters or click 'Show all clients'.")
+    st.info("No clients match your filter/search. Click 'Show all clients' to reset.")
     st.stop()
 
 lead = store.get_lead(store.get_selected_lead_id())
 
 # ------ Header summary ------
-origin = lead.get("origin","").title()
 if lead["origin"] == "app":
     st.success(f"Origin: App Submission — Guided Care Plan completed on {lead['created'].isoformat()}")
 elif lead["origin"] == "hospital":
     st.warning(f"Origin: Hospital Referral — created {lead['created'].isoformat()}")
 else:
-    st.info(f"Origin: {origin or 'Unknown'} — created {lead['created'].isoformat()}")
+    st.info(f"Origin: {lead['origin'].title()} — created {lead['created'].isoformat()}")
 
 h1, h2, h3, h4 = st.columns([0.35, 0.15, 0.25, 0.25])
 with h1:
@@ -114,13 +108,12 @@ st.markdown(f"**Estimated cost:** ${est:,.0f} / month")
 # Footer actions
 qa1, qa2, qa3 = st.columns([0.25,0.25,0.5])
 with qa1:
-    # Highlight if unassigned
     if not lead.get("assigned_to"):
         st.warning("This client is unassigned.")
     if st.button("Assign to me"):
-        lead["assigned_to"] = "Current Advisor"
+        lead["assigned_to"] = store.CURRENT_USER
         store.upsert_lead(lead)
-        st.success("Assigned.")
+        st.success(f"Assigned to {store.CURRENT_USER}.")
 with qa2:
     if st.button("Start Intake"):
         st.toast("Intake started.")
