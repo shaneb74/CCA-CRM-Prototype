@@ -1,4 +1,4 @@
-# 04_Client_Record.py — clearer search placement + agent names
+# 04_Client_Record.py — assign button gated; Start Intake routes to workflow
 import streamlit as st
 from datetime import date
 import store
@@ -108,15 +108,27 @@ st.markdown(f"**Estimated cost:** ${est:,.0f} / month")
 # Footer actions
 qa1, qa2, qa3 = st.columns([0.25,0.25,0.5])
 with qa1:
+    mine = (lead.get("assigned_to") == store.CURRENT_USER)
     if not lead.get("assigned_to"):
         st.warning("This client is unassigned.")
-    if st.button("Assign to me"):
-        lead["assigned_to"] = store.CURRENT_USER
-        store.upsert_lead(lead)
-        st.success(f"Assigned to {store.CURRENT_USER}.")
+    if st.button("Assign to me", disabled=mine):
+        if not mine:
+            lead["assigned_to"] = store.CURRENT_USER
+            store.upsert_lead(lead)
+            st.success(f"Assigned to {store.CURRENT_USER}.")
+            st.experimental_rerun()
 with qa2:
     if st.button("Start Intake"):
-        st.toast("Intake started.")
+        st.session_state["intake_lead_id"] = lead["id"]
+        # move progress a notch to show motion in demo
+        try:
+            store.set_progress(lead["id"], max(store.get_progress(lead["id"]), 0.20))
+        except Exception:
+            pass
+        if hasattr(st, "switch_page"):
+            st.switch_page("pages/06_Intake_Workflow.py")
+        else:
+            st.experimental_rerun()
 with qa3:
     st.caption("After tours, log results here and the pipeline will advance automatically.")
 
