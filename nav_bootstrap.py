@@ -1,5 +1,5 @@
 
-# nav_bootstrap.py — call boot() at top of visible pages to keep the sidebar clean
+# nav_bootstrap.py — call boot() after set_page_config on visible pages
 from ui_chrome import hide_pages
 
 def boot():
