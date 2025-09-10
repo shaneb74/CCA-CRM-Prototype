@@ -1,4 +1,4 @@
-# 04_Client_Record.py — with client search
+# 04_Client_Record.py — Client search with 'Show all clients' clear control
 import streamlit as st
 from datetime import date
 import store
@@ -17,9 +17,24 @@ if "case_steps" not in st.session_state:
 
 # ------ Search UI ------
 st.subheader("Find a client")
-q = st.text_input("Search by first or last name", placeholder="Type to filter: e.g., John, Smith, Alvarez", key="client_search_q")
+
+def _clear_search():
+    st.session_state.client_search_q = ""
+
+q = st.text_input(
+    "Search by first or last name",
+    placeholder="Type to filter: e.g., John, Smith, Alvarez",
+    key="client_search_q",
+)
+
+# Toolbar: show a 'Show all clients' button when there's an active query
+toolbar_cols = st.columns([0.75, 0.25])
+with toolbar_cols[1]:
+    if q:
+        st.button("Show all clients", on_click=_clear_search)
 
 leads = store.get_leads()
+
 def _matches(lead, q):
     if not q:
         return True
@@ -30,7 +45,7 @@ filtered = [l for l in leads if _matches(l, q)]
 
 # Selected lead logic
 current_id = store.get_selected_lead_id()
-# If no selection or selection not in filtered, pick first filtered
+# If no selection or selection not in filtered (or list empty), pick first filtered
 if not current_id or not any(l["id"] == current_id for l in filtered):
     if filtered:
         current_id = filtered[0]["id"]
@@ -39,10 +54,11 @@ if not current_id or not any(l["id"] == current_id for l in filtered):
 # Let user switch among filtered results
 if filtered:
     options = {f"{x['name']} ({x['id']}) — {x['city']}": x["id"] for x in filtered}
-    sel_label = st.selectbox("Matching clients", list(options.keys()), index=list(options.values()).index(current_id) if current_id in options.values() else 0)
+    idx = list(options.values()).index(current_id) if current_id in options.values() else 0
+    sel_label = st.selectbox("Matching clients", list(options.keys()), index=idx)
     store.set_selected_lead(options[sel_label])
 else:
-    st.info("No clients match your search.")
+    st.info("No clients match your search. Click 'Show all clients' to reset.")
 
 lead = store.get_lead(store.get_selected_lead_id()) if filtered else None
 if not lead:
