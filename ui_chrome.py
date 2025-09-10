@@ -1,5 +1,5 @@
 
-# ui_chrome.py — helpers for hiding sidebar pages
+# ui_chrome.py — helpers for hiding sidebar pages via CSS
 import streamlit as st
 
 def hide_pages(hrefs: list[str]):
@@ -8,5 +8,4 @@ def hide_pages(hrefs: list[str]):
     if not hrefs:
         return
     selectors = ",".join([f'section[data-testid="stSidebar"] a[href*="{h}"]' for h in hrefs])
-    css = f"""<style>{selectors} {{ display: none !important; }}</style>"""
-    st.markdown(css, unsafe_allow_html=True)
+    st.markdown(f"""<style>{selectors} {{ display: none !important; }}</style>""", unsafe_allow_html=True)
