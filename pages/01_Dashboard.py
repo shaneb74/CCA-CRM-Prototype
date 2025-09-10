@@ -1,53 +1,44 @@
-
 from ui_chrome import apply_chrome
-import store
-import streamlit as st
 apply_chrome()
+
+import streamlit as st
+from datetime import date, timedelta
+import store
+
 store.init()
-
-from datetime import date
-
 st.title("Advisor Dashboard")
 
-# Stats row
-c1, c2, c3, c4 = st.columns(4)
 leads = store.get_leads()
-tasks = store.get_tasks()
+today = date.today()
+
+c1,c2,c3,c4 = st.columns(4)
 with c1:
-    st.metric("New leads (today)", 2, "+2 vs yesterday")
+    st.metric("New leads (today)", len(leads), "+2 vs yesterday")
 with c2:
-    st.metric("Assigned leads", len([l for l in leads if l.get("assigned_to")==store.CURRENT_USER]), "+1 this week")
+    st.metric("Assigned leads", len([l for l in leads if l.get("assigned_to")]), "+1 this week")
 with c3:
-    st.metric("Active cases", len([l for l in leads if l.get("status")!='new']), "-1 since Fri")
+    st.metric("Active cases", len(leads), "-1 since Fri")
 with c4:
     st.metric("MTD vs goal", "$20,500 / $40,000", "51% of goal")
 
-# Guidance & Alerts (drawer style)
-with st.expander(f"Guidance & Alerts  🔔 {len(store.get_notifications())} new", expanded=False):
-    for n in store.get_notifications():
-        st.write("-", n["text"])
+with st.expander("Guidance & Alerts", expanded=False):
+    st.write("- Upload signed Disclosure before scheduling tours.")
+    st.write("- Confirm Medicaid rollover during financial review.")
+    st.write("- Keep intake notes date-stamped with initials.")
 
-st.markdown("---")
-
-# Tasks & Queues (left) / Upcoming (right)
-left, right = st.columns([2,1])
+st.subheader("Tasks & Queues")
+left, right = st.columns(2)
 with left:
-    st.caption("Tasks & Queues • Today")
-    for t in tasks:
-        with st.container(border=True):
-            st.write(t["title"])
-            st.caption(f"Due {t['due']}")
-            st.button("✓ Complete", key=f"complete_{t['id']}", use_container_width=False)
-
-    with st.container(border=True):
-        st.caption("Add quick task")
-        st.text_input("Title", key="dash_quick_task_title", label_visibility="collapsed", placeholder="Add task")
-        st.selectbox("Priority", options=["High","Med","Low"], index=1, key="dash_quick_task_pri", label_visibility="collapsed")
-        st.button("Add")
-
+    st.caption("Due today")
+    st.write("• Call John Doe")
+    st.write("• Upload Disclosure for John Doe")
+    st.write("• Call Mary Smith")
 with right:
     st.caption("Upcoming")
-    with st.container(border=True):
-        st.write("Complete intake for Luis Alvarez")
-        st.caption("Due " + str(date.today()))
-        st.button("✓ Complete", key="complete_upcoming")
+    st.write("• Complete intake for Luis Alvarez")
+
+st.divider()
+st.subheader("Advisor Workflows")
+if st.button("Open Workflows hub →"):
+    st.session_state["_goto_page"] = "pages/89_Workflows.py"
+    st.experimental_rerun()
