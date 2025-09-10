@@ -1,11 +1,47 @@
 
-# pages/04_Client_Record.py  — Case Overview with placement gating
+# pages/04_Client_Record.py
+# Case Overview (Client Record) — safe, standalone page
+
 from __future__ import annotations
 import streamlit as st
 import datetime
+
+# -------- redirect hook (consumes previously scheduled nav) --------
+_dest = st.session_state.pop("_goto_page", None)
+if _dest:
+    try:
+        st.switch_page(_dest)
+    except Exception:
+        pass
+
+# Optional chrome tweaks; ignore if not present
+try:
+    from ui_chrome import hide_default
+    hide_default()
+except Exception:
+    pass
+
 import store
 
+# ---------- helpers ----------
+
+def _assign_to_me():
+    lead = st.session_state.get("_lead_obj")
+    if not lead:
+        return
+    me = getattr(store, "CURRENT_USER", "Current Advisor")
+    if lead.get("assigned_to") != me:
+        lead["assigned_to"] = me
+        store.upsert_lead(lead)
+        st.success(f"Assigned to {me}")
+        st.rerun()
+
+
+# ---------- page ----------
+
+st.set_page_config(page_title="Case Overview", page_icon="📄", layout="wide")
 store.init()
+
 st.title("Case Overview")
 
 # -------- top filters --------
@@ -33,9 +69,11 @@ for l in leads:
             continue
     filtered.append(l)
 
+# if nothing, show all to avoid empty page during demos
 if not filtered and not q and advisor_filter == "All advisors":
     filtered = leads
 
+# selection
 lead_id_current = store.get_selected_lead_id()
 options = [_lead_label(l) for l in filtered] or ["— no clients —"]
 idx_default = 0
@@ -58,7 +96,7 @@ if filtered:
     store.set_selected_lead(selected.get("id"))
 
 lead = store.get_lead(store.get_selected_lead_id()) if store.get_selected_lead_id() else (filtered[0] if filtered else None)
-st.session_state["_lead_obj"] = lead  # accessible to callbacks
+st.session_state["_lead_obj"] = lead  # make accessible to callbacks
 
 if not lead:
     st.info("No matching clients. Adjust filters above.")
@@ -92,7 +130,10 @@ with lc1:
     st.subheader("Info from App")
     st.write(f"**Care Preference:** {lead.get('preference','—')}")
     budget = lead.get("budget", 0)
-    st.write(f"**Budget:** " + (f"${int(budget):,}/month" if budget else "—"))
+    if budget:
+        st.write(f"**Budget:** ${int(budget):,}/month")
+    else:
+        st.write("**Budget:** —")
     st.write(f"**Timeline:** {lead.get('timeline','—')}")
     if lead.get("notes"):
         st.write(f"**Notes:** {lead.get('notes')}")
@@ -114,25 +155,10 @@ cost_str = f"${int(dsc):,} / month" if isinstance(dsc, (int, float)) and dsc > 0
 st.write(f"**Recommended:** {dsr}")
 st.write(f"**Estimated cost:** {cost_str}")
 
-btns = st.columns([1,1,1,6])
+btns = st.columns([1,1,2,6])
 
 me = getattr(store, "CURRENT_USER", "Current Advisor")
 already_mine = (lead.get("assigned_to") == me)
-intake_done = bool(lead.get("intake_completed"))
-
-def _assign_to_me():
-    if lead.get("assigned_to") != me:
-        lead["assigned_to"] = me
-        store.upsert_lead(lead)
-        st.success(f"Assigned to {me}")
-        st.rerun()
-
-def _open_intake():
-    if lead and lead.get("id"):
-        store.set_selected_lead(lead["id"])
-    # prefer 90_* if it exists
-    st.session_state["_goto_page"] = "pages/90_Intake_Workflow.py"
-    st.rerun()
 
 with btns[0]:
     st.button(
@@ -142,26 +168,26 @@ with btns[0]:
         key="assign_to_me_btn",
     )
 
+# Use button return (no callback) to safely navigate without the rerun-in-callback warning
 with btns[1]:
-    st.button(
-        "Start Intake",
-        on_click=_open_intake,
-        disabled=not already_mine,   # must be assigned to active advisor
-        key="start_intake_btn",
-    )
+    if st.button("Start Intake", key="start_intake_btn", disabled=not already_mine):
+        if lead and lead.get("id"):
+            store.set_selected_lead(lead["id"])
+        try:
+            st.switch_page("pages/90_Intake_Workflow.py")
+        except Exception:
+            st.session_state["_goto_page"] = "pages/90_Intake_Workflow.py"
+            st.rerun()
 
 with btns[2]:
-    st.button(
-        "Open Placement Workflow",
-        key="open_placement_btn",
-        disabled=not intake_done,  # gate until intake completed
-        on_click=lambda: (
-            store.set_selected_lead(lead["id"]),
-            st.session_state.update(_goto_page="pages/91_Placement_Workflow.py"),
+    intake_done = bool(lead.get("intake_completed"))
+    if st.button("Open Placement Workflow", key="open_placement_btn", disabled=not intake_done):
+        if lead and lead.get("id"):
+            store.set_selected_lead(lead["id"])
+        try:
+            st.switch_page("pages/91_Placement_Workflow.py")
+        except Exception:
+            st.session_state["_goto_page"] = "pages/91_Placement_Workflow.py"
             st.rerun()
-        ),
-    )
 
-if not intake_done:
-    st.caption("Finish Intake to enable Placement.")
 st.caption("After tours, log results here and the pipeline will advance automatically.")
