@@ -1,5 +1,4 @@
-
-# 07_Placement_Workflow.py — self-hidden
+# pages/07_Placement_Workflow.py — minimal guided placement (self-hidden)
 import streamlit as st
 st.set_page_config(page_title="Placement Workflow", page_icon="🏡", layout="wide")
 from ui_chrome import hide_pages
@@ -13,5 +12,5 @@ st.title("Placement Workflow")
 if not lead: st.info("Select a client, then return."); st.stop()
 st.caption(f"{lead['name']} • {lead.get('city','')}")
 
-ui.render_financial(lead, ns="main")
-ui.render_notifications(lead, ns="main")
+ui.financial(lead, ns="main")
+ui.notes(lead, ns="main")

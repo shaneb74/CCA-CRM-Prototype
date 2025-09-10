@@ -1,57 +1,83 @@
-
-# 02_Advisor_Workspace.py
+# 02_Advisor_Workspace.py — button label updated
 import streamlit as st
-st.set_page_config(page_title="Advisor Workspace", page_icon="🧰", layout="wide")
-from nav_bootstrap import boot; boot()
-
 import store
+
 store.init()
 
 st.title("Advisor Workspace")
+st.markdown(
+    '<style>.page {max-width:1200px;margin:0 auto}.summary-card{border:1px solid #e5e7eb;border-radius:14px;padding:16px;background:#fff}</style>',
+    unsafe_allow_html=True,
+)
+st.markdown('<div class="page">', unsafe_allow_html=True)
 
-# Filters
-stage = st.segmented_control("Stage", options=["All","Lead Received","Intake","Case Mgmt"], default="All", key="aw_stage")
-origin = st.segmented_control("Origin", options=["All","App","Phone","Hospital"], default="All", key="aw_origin")
+def segmented(label, options, default):
+    if hasattr(st, "segmented_control"):
+        return st.segmented_control(label, options=options, default=default)
+    return st.radio(label, options, index=options.index(default), horizontal=True)
 
-leads = store.get_leads()
-def match(l):
-    ok1 = stage=="All" or l.get("stage")==stage
-    ok2 = origin=="All" or l.get("origin")==origin
-    return ok1 and ok2
-filtered = [l for l in leads if match(l)]
+f1, f2 = st.columns([0.6, 0.4])
+with f1:
+    origin = segmented("Filter", ["All leads","App","Phone","Hospital"], "All leads")
+with f2:
+    stage = segmented("Stage", ["All","Lead Received","Intake","Case Mgmt"], "All")
 
-cL, cR = st.columns([0.48,0.52])
-with cL:
+def origin_ok(o):
+    if origin == "All leads": return True
+    return o == {"App":"app","Phone":"phone","Hospital":"hospital"}[origin]
+
+leads = [l for l in store.get_leads() if origin_ok(l["origin"])]
+
+sel_id = st.session_state.get("ws_selected_lead") or (leads[0]["id"] if leads else None)
+if sel_id and not any(l["id"] == sel_id for l in leads):
+    sel_id = leads[0]["id"] if leads else None
+st.session_state["ws_selected_lead"] = sel_id
+
+left, right = st.columns([0.44, 0.56])
+
+with left:
     st.subheader("Work Queue")
-    for l in filtered:
+    for l in leads:
         with st.container(border=True):
-            st.write(f"**{l['name']} — {l.get('stage','')}**")
-            st.caption(f"{l.get('city','')} • Next: start intake")
-            cc1,cc2=st.columns([0.2,0.8])
-            with cc1:
-                if st.button("View Record Summary", key=f"open_{l['id']}"):
+            st.markdown(f"**{l['name']} — {('Intake' if l['status']=='new' else 'Case Mgmt')}**")
+            st.caption(f"{l['city']}  •  Next: start intake")
+            c1, c2 = st.columns([0.5, 0.5])
+            with c1:
+                if st.button("View Record Summary", key=f"open_ws_{l['id']}"):
+                    st.session_state["ws_selected_lead"] = l["id"]
+                    st.experimental_rerun()
+            with c2:
+                if st.button("Client Record", key=f"open_full_{l['id']}"):
                     store.set_selected_lead(l["id"])
-            with cc2:
-                if st.button("Client Record", key=f"goto_{l['id']}"):
-                    store.set_selected_lead(l["id"])
-                    if hasattr(st,"switch_page"): st.switch_page("pages/04_Client_Record.py")
+                    if hasattr(st, "switch_page"):
+                        st.switch_page("pages/04_Client_Record.py")
+                    else:
+                        st.experimental_rerun()
 
-with cR:
+with right:
     st.subheader("Case Overview")
-    lead = store.get_lead(store.get_selected_lead_id()) if store.get_selected_lead_id() else (filtered[0] if filtered else None)
-    if not lead:
-        st.info("Select a lead on the left.")
+    current = next((x for x in store.get_leads() if x["id"] == st.session_state.get("ws_selected_lead")), None)
+    if not current:
+        st.info("Select a lead from the queue to see details.")
     else:
-        st.write(f"**{lead['name']} • {lead.get('city','')}**")
-        st.caption(f"Stage: {lead.get('stage','')} • Priority: {lead.get('priority','')} • Budget: ${lead.get('budget','')}")
-        st.write("Intake progress")
-        st.progress(float(lead.get("intake_progress",0.0)))
-        st.text_area("Quick note", placeholder="Add a quick note...", key=f"quick_{lead['id']}", height=100)
-        st.selectbox("Care needs", ["Choose options","Assistance with ADLs","Memory support"], index=0, key=f"needs_{lead['id']}")
         with st.container(border=True):
-            st.subheader("Decision support (last results)")
-            st.write(f"**Recommended:** {lead.get('ds_recommendation','—')}")
-            st.write(f"**Estimated cost:** ${lead.get('ds_est_cost',0):,} / month")
-            if st.button("Open full client record", key=f"full_{lead['id']}"):
-                store.set_selected_lead(lead["id"])
-                if hasattr(st,"switch_page"): st.switch_page("pages/04_Client_Record.py")
+            st.markdown(f"**{current['name']} • {current['city']}**")
+            st.caption(f"Stage: {'Intake' if current['status']=='new' else 'Case Mgmt'} • Priority: 2 • Budget: ${current['budget']:,}")
+            pct = store.get_progress(current["id"])
+            st.progress(pct, text="Intake progress")
+            st.text_area("Quick note", placeholder="Add a quick note...", key=f"note_{current['id']}")
+            st.selectbox("Care needs", ["Choose options","Assistance with ADLs","Memory care", "Skilled nursing"], index=0)
+            st.markdown("### Decision support (last results)")
+            with st.container(border=True):
+                rec = current.get("ds_recommendation", "Assisted Living")
+                est = current.get("ds_est_cost", 4500)
+                st.markdown(f"**Recommended:** {rec}")
+                st.markdown(f"**Estimated cost:** ${est:,.0f} / month")
+            if st.button("Open full client record", key=f"open_full_summary_{current['id']}"):
+                store.set_selected_lead(current['id'])
+                if hasattr(st, 'switch_page'):
+                    st.switch_page('pages/04_Client_Record.py')
+                else:
+                    st.experimental_rerun()
+
+st.markdown('</div>', unsafe_allow_html=True)
