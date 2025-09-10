@@ -6,17 +6,6 @@ import store
 # Safe init
 store.init()
 
-# Hide workflow pages from sidebar
-def boot():
-    st.hide_pages([
-        "88_Workflows_Section",
-        "89_Workflows",
-        "90_Intake_Workflow",
-        "91_Placement_Workflow",
-        "92_Followup_Workflow",
-    ])
-boot()  
-
 st.title("Advisor Dashboard")
 
 # ------- lightweight styles
