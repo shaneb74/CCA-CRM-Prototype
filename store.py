@@ -3,6 +3,12 @@ from datetime import date, timedelta
 import streamlit as st
 from models import Lead, Task, Advisor, Origin, Status, Priority
 
+try:
+    from ui_chrome import apply_chrome
+    apply_chrome()
+except Exception:
+    pass
+
 # --- App-wide "current user" (mock) ---
 CURRENT_USER = "Kelsey Jochum"
 
