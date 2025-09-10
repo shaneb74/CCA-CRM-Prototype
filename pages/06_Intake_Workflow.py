@@ -1,5 +1,5 @@
 
-# 06_Intake_Workflow.py — guided process that pulls in data compartments
+# 06_Intake_Workflow.py — guided intake (self-hidden)
 import streamlit as st
 st.set_page_config(page_title="Intake Workflow", page_icon="📝", layout="wide")
 
@@ -7,7 +7,7 @@ import store
 from ui_chrome import hide_pages
 import ui_sections as ui
 
-# Hide guided pages from sidebar
+# Hide guided pages + hub from sidebar
 hide_pages(["06_Intake_Workflow", "07_Placement_Workflow", "08_Followup_Workflow", "00_Workflows"])
 
 store.init()
@@ -21,8 +21,7 @@ if not lead:
 st.title("Intake Workflow")
 st.caption(f"{lead['name']} • {lead['city']} • Assigned: {lead.get('assigned_to') or 'Unassigned'}")
 
-mine = ((lead.get("assigned_to") or "").strip().lower()
-        == (store.CURRENT_USER or "").strip().lower())
+mine = ((lead.get("assigned_to") or "").strip().lower() == (store.CURRENT_USER or "").strip().lower())
 if not mine:
     st.error("Only the assigned advisor can run intake for this client.")
     st.stop()

@@ -1,12 +1,11 @@
 
-# nav_bootstrap.py — import and call boot() at the top of *visible* pages
+# nav_bootstrap.py — call boot() at top of visible pages to keep the sidebar clean
 from ui_chrome import hide_pages
 
 def boot():
-    # Hide anything unnecessary from sidebar across visible pages
     hide_pages([
         "00_Workflows",
         "06_Intake_Workflow",
         "07_Placement_Workflow",
-        "08_Followup_Workflow"
+        "08_Followup_Workflow",
     ])

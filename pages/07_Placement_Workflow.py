@@ -1,5 +1,5 @@
 
-# 07_Placement_Workflow.py — guided placement process
+# 07_Placement_Workflow.py — guided placement (self-hidden)
 import streamlit as st
 st.set_page_config(page_title="Placement Workflow", page_icon="🏡", layout="wide")
 

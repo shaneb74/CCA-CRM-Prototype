@@ -1,5 +1,5 @@
 
-# 08_Followup_Workflow.py — guided post-placement follow-up
+# 08_Followup_Workflow.py — guided follow-up (self-hidden)
 import streamlit as st
 st.set_page_config(page_title="Follow-up Workflow", page_icon="📞", layout="wide")
 
