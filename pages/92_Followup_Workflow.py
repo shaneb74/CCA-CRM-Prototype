@@ -1,5 +1,5 @@
 from ui_chrome import apply_chrome
-apply_chrome(hide_workflows=True, show_workflow_divider=False)
+apply_chrome()
 
 import streamlit as st, store
 store.init()
