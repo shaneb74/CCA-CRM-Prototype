@@ -7,6 +7,7 @@ def init():
     if "tasks" not in st.session_state:
         st.session_state.tasks = _seed_tasks()
     st.session_state.setdefault("selected_lead_id", None)
+    st.session_state.setdefault("case_steps", {})  # restored for Client Record
 
 def get_leads():
     return st.session_state.leads
