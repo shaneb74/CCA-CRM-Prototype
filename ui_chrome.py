@@ -1,61 +1,27 @@
 
-# ui_chrome.py — robustly hide workflow pages from the sidebar (v2)
+# ui_chrome.py — CSS-only sidebar hider (v3, no <script> required)
 import streamlit as st
-from textwrap import dedent
-
-# Sidebar labels exactly as they appear
-HIDE_TITLES = [
-    "Workflows",
-    "Intake Workflow",
-    "Placement Workflow",
-    "Followup Workflow",
-]
-
-# Optional href fragments (works in many setups; harmless otherwise)
-HIDE_HREFS = [
-    "/00_Workflows",
-    "/06_Intake_Workflow",
-    "/07_Placement_Workflow",
-    "/08_Followup_Workflow",
-]
 
 def hide_default():
-    # CSS-by-href fallback
-    if HIDE_HREFS:
-        selectors = ",".join([f'section[data-testid="stSidebar"] a[href*="{frag}"]'
-                               for frag in HIDE_HREFS])
-        st.markdown(f"<style>{selectors}{{display:none!important;}}</style>", unsafe_allow_html=True)
+    """
+    Hide workflow pages from the sidebar purely with CSS attribute selectors.
+    Works even when Streamlit sanitizes <script> tags.
+    """
+    # common URL fragments Streamlit generates (covering both file-path and slugged urls)
+    fragments = [
+        "00_Workflows", "workflows",
+        "06_Intake_Workflow", "intake-workflow", "intake_workflow",
+        "07_Placement_Workflow", "placement-workflow", "placement_workflow",
+        "08_Followup_Workflow", "followup-workflow", "followup_workflow",
+    ]
 
-    # JS-by-label, resilient to URL changes and rerenders
-    js = dedent(f"""
-    <script>
-    const HIDE_TITLES = {HIDE_TITLES!r};
-    const HIDE_HREFS  = {HIDE_HREFS!r};
-    function hideItems() {{
-      const side = document.querySelector('section[data-testid="stSidebar"]');
-      if (!side) return;
-      let hidden = 0;
-      const links = side.querySelectorAll('a[href]');
-      links.forEach(a => {{
-        const txt = (a.textContent || '').trim();
-        const href = a.getAttribute('href') || '';
-        const hitTitle = HIDE_TITLES.includes(txt);
-        const hitHref  = HIDE_HREFS.some(f => href.includes(f));
-        if (hitTitle || hitHref) {{
-          const row = a.parentElement || a;
-          if (row && row.style.display !== 'none') {{
-            row.style.display = 'none';
-            hidden++;
-          }}
-        }}
-      }});
-      console.debug('[ui_chrome] hid', hidden, 'sidebar link(s)');
-    }}
-    // run now, after load, and after mutations
-    hideItems();
-    window.addEventListener('load', hideItems);
-    const obs = new MutationObserver(hideItems);
-    obs.observe(document.body, {{ subtree: true, childList: true }});
-    </script>
-    """)
-    st.markdown(js, unsafe_allow_html=True)
+    selectors = []
+    for frag in fragments:
+        # Typical sidebar structure: section[data-testid="stSidebar"] a[href*="..."]
+        selectors.append(f'section[data-testid="stSidebar"] a[href*="{frag}"]')
+        # Also hide the parent li (anchor is usually inside a list item)
+        selectors.append(f'section[data-testid="stSidebar"] a[href*="{frag}"] *')
+
+    css = ",".join(selectors) + "{display:none !important;visibility:hidden !important;}"
+
+    st.markdown(f"<style>{css}</style>", unsafe_allow_html=True)
