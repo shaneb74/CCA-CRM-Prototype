@@ -1,4 +1,5 @@
-# pages/08_Followup_Workflow.py — minimal guided follow-up (self-hidden)
+
+# 08_Followup_Workflow.py — self-hidden
 import streamlit as st
 st.set_page_config(page_title="Follow-up Workflow", page_icon="📞", layout="wide")
 from ui_chrome import hide_pages
@@ -12,4 +13,4 @@ st.title("Follow-up Workflow")
 if not lead: st.info("Select a client, then return."); st.stop()
 st.caption(f"{lead['name']} • {lead.get('city','')}")
 
-ui.notes(lead, ns="main")
+ui.render_notifications(lead, ns="main")
