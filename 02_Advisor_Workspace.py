@@ -65,7 +65,7 @@ with left:
             st.caption(f"{l['city']}  •  Next: start intake")
             c1, c2 = st.columns([0.5, 0.5])
             with c1:
-                if st.button("View Record Summary", key=f"open_ws_{l['id']}"):
+                if st.button("Open", key=f"open_ws_{l['id']}"):
                     st.session_state["ws_selected_lead"] = l["id"]
                     st.experimental_rerun()
             with c2:
