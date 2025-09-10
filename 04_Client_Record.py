@@ -1,4 +1,4 @@
-# 04_Client_Record.py — per-record button refresh + selection-aware state reset
+# 04_Client_Record.py — Start Intake disabled unless assigned to CURRENT_USER
 import streamlit as st
 import store
 
@@ -8,7 +8,6 @@ st.title("Case Overview")
 st.session_state.setdefault("case_steps", {})
 st.session_state.setdefault("client_search_q","")
 st.session_state.setdefault("show_intake_inline", False)
-st.session_state.setdefault("last_lead_id", None)
 
 # --------- Filters ---------
 leads_all = store.get_leads()
@@ -34,7 +33,6 @@ if not filtered:
     st.info("No clients match your filter/search. Click 'Show all clients' to reset.")
     st.stop()
 
-# selection
 current_id = store.get_selected_lead_id()
 if not current_id or not any(l["id"] == current_id for l in filtered):
     current_id = filtered[0]["id"]
@@ -42,15 +40,10 @@ if not current_id or not any(l["id"] == current_id for l in filtered):
 
 options = {f"{x['name']} ({x['id']}) — {x['city']} — {x.get('assigned_to') or 'Unassigned'}": x["id"] for x in filtered}
 idx = list(options.values()).index(current_id) if current_id in options.values() else 0
-sel_label = st.selectbox("Matching clients", list(options.keys()), index=idx, key="client_selector")
+sel_label = st.selectbox("Matching clients", list(options.keys()), index=idx)
 store.set_selected_lead(options[sel_label])
-lead = store.get_lead(store.get_selected_lead_id())
 
-# Reset per-selection state if the selected lead changed
-if st.session_state.last_lead_id != lead["id"]:
-    st.session_state.show_intake_inline = False
-    # Clear any per-lead widgets by changing their keys via lead id (handled below)
-    st.session_state.last_lead_id = lead["id"]
+lead = store.get_lead(store.get_selected_lead_id())
 
 # ------ Header summary ------
 origin = (lead.get("origin") or "").title()
@@ -87,7 +80,7 @@ if not st.session_state.show_intake_inline:
                                 ("disclosure", "Upload Disclosure"),
                                 ("intake", "Complete Intake")]:
             key = f"{lead['id']}_{step_key}"
-            st.session_state.case_steps[key] = st.checkbox(label, value=st.session_state.case_steps.get(key, False), key=key)
+            st.session_state.case_steps[key] = st.checkbox(label, value=st.session_state.case_steps.get(key, False))
 
     st.divider()
 
@@ -108,18 +101,18 @@ with qa1:
     if mine:
         st.success("Assigned to you")
     else:
-        if st.button("Assign to me", key=f"assign_{lead['id']}"):
+        if st.button("Assign to me"):
             lead["assigned_to"] = current_user or "Unknown User"
             store.upsert_lead(lead)
             st.success(f"Assigned to {current_user}.")
             st.experimental_rerun()
 
 with qa2:
-    # Start Intake disabled unless assigned to current user
+    # Start Intake is disabled unless assigned to current user
     disabled_reason = None
     if not mine:
         disabled_reason = f"Only the assigned advisor ({assigned_to or 'Unassigned'}) can start intake."
-    start = st.button("Start Intake", key=f"start_intake_{lead['id']}", disabled=not mine, help=disabled_reason)
+    start = st.button("Start Intake", disabled=not mine, help=disabled_reason)
     if start:
         st.session_state["intake_lead_id"] = lead["id"]
         st.session_state.show_intake_inline = True
@@ -148,25 +141,25 @@ if st.session_state.show_intake_inline and mine:
 
     c1, c2 = st.columns(2)
     with c1:
-        draft["contact"]["first_name"] = st.text_input("First name", value=draft["contact"]["first_name"] or lead["name"].split()[0], key=f"fn_{lead['id']}")
-        draft["contact"]["phone"] = st.text_input("Phone", value=draft["contact"]["phone"], key=f"ph_{lead['id']}")
-        draft["insurance"]["primary"] = st.text_input("Primary insurance", value=draft["insurance"]["primary"], key=f"ins1_{lead['id']}")
+        draft["contact"]["first_name"] = st.text_input("First name", value=draft["contact"]["first_name"] or lead["name"].split()[0])
+        draft["contact"]["phone"] = st.text_input("Phone", value=draft["contact"]["phone"])
+        draft["insurance"]["primary"] = st.text_input("Primary insurance", value=draft["insurance"]["primary"])
     with c2:
         last = lead["name"].split()[1] if len(lead["name"].split())>1 else ""
-        draft["contact"]["last_name"] = st.text_input("Last name", value=draft["contact"]["last_name"] or last, key=f"ln_{lead['id']}")
-        draft["contact"]["email"] = st.text_input("Email", value=draft["contact"]["email"], key=f"em_{lead['id']}")
-        draft["insurance"]["secondary"] = st.text_input("Secondary insurance", value=draft["insurance"]["secondary"], key=f"ins2_{lead['id']}")
+        draft["contact"]["last_name"] = st.text_input("Last name", value=draft["contact"]["last_name"] or last)
+        draft["contact"]["email"] = st.text_input("Email", value=draft["contact"]["email"])
+        draft["insurance"]["secondary"] = st.text_input("Secondary insurance", value=draft["insurance"]["secondary"])
 
     st.session_state["intake_data"][lead["id"]] = draft
 
     b1, b2 = st.columns([0.4,0.6])
     with b1:
-        if st.button("Open full Intake page →", key=f"open_full_{lead['id']}"):
+        if st.button("Open full Intake page →"):
             if hasattr(st, "switch_page"):
                 st.switch_page("pages/06_Intake_Workflow.py")
             else:
                 st.page_link("pages/06_Intake_Workflow.py", label="Open Intake Workflow", icon="🧭")
     with b2:
-        if st.button("Close inline Intake", key=f"close_inline_{lead['id']}"):
+        if st.button("Close inline Intake"):
             st.session_state.show_intake_inline = False
             st.experimental_rerun()
