@@ -4,6 +4,8 @@
 from __future__ import annotations
 import streamlit as st
 import datetime
+from ui_chrome import apply_chrome
+apply_chrome()
 
 # Optional chrome tweaks; ignore if not present
 try:

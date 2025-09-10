@@ -2,6 +2,8 @@
 # pages/20_Entity_Management.py
 import streamlit as st
 import communities_store as cstore
+from ui_chrome import apply_chrome
+apply_chrome()
 
 st.set_page_config(page_title="Entity Management", page_icon="🗂️", layout="wide")
 cstore.init()

@@ -3,6 +3,8 @@
 import streamlit as st
 import communities_store as cstore
 import store
+from ui_chrome import apply_chrome
+apply_chrome()
 
 st.set_page_config(page_title="Placement Workflow", page_icon="🏙️", layout="wide")
 store.init(); cstore.init()

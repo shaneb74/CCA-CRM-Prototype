@@ -1,5 +1,8 @@
 # --- path bootstrap so root modules import from /pages scripts ---
 import os, sys
+from ui_chrome import apply_chrome
+apply_chrome()
+
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 if ROOT not in sys.path:
     sys.path.insert(0, ROOT)
