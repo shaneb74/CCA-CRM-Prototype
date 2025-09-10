@@ -1,4 +1,3 @@
-# ui_chrome.py
 import streamlit as st
 
 # --- single-run guards ---
@@ -26,51 +25,23 @@ def _consume_redirect():
             return
     except Exception:
         pass
-    # Fallback: do nothing; next run will still work via buttons.
+    # Fallback: do nothing (Cloud rerun will keep state; links still work from hub).
 
 def _decorate_sidebar_workflows():
-    # Optional: visually group workflow pages under a divider + label
+    # Visually group 90/91/92 workflow pages under a divider + label
     css = """
     <style>
-    section[data-testid="stSidebar"] a[data-testid="stSidebarNavLink"][href*="90_"]{
+    section[data-testid="stSidebar"] a[data-testid="stSidebarNavLink"][href*="pages/90_"]{
       margin-top:14px; padding-top:12px; border-top:1px solid #e5e7eb;
     }
-    section[data-testid="stSidebar"] a[data-testid="stSidebarNavLink"][href*="90_"]::before{
+    section[data-testid="stSidebar"] a[data-testid="stSidebarNavLink"][href*="pages/90_"]::before{
       content:"Workflows"; display:block; font-size:12px; color:#6b7280; margin-bottom:6px;
     }
     </style>
     """
     st.markdown(css, unsafe_allow_html=True)
 
-def _hide_workflow_links():
-    """
-    Actually hide workflow links from the sidebar by removing the anchors.
-    Important: do NOT include `pages/` in the href match. Streamlit uses paths like `/90_Intake_Workflow`.
-    """
-    css = """
-    <style>
-    /* Remove the anchors entirely (collapses the row) */
-    section[data-testid="stSidebar"]
-      a[data-testid="stSidebarNavLink"][href*="90_Intake_Workflow"],
-    section[data-testid="stSidebar"]
-      a[data-testid="stSidebarNavLink"][href*="91_Placement_Workflow"],
-    section[data-testid="stSidebar"]
-      a[data-testid="stSidebarNavLink"][href*="92_Followup_Workflow"],
-    section[data-testid="stSidebar"]
-      a[data-testid="stSidebarNavLink"][href*="88_Workflows_Section"],
-    section[data-testid="stSidebar"]
-      a[data-testid="stSidebarNavLink"][href*="89_Workflows"] {
-        display: none !important;
-    }
-    </style>
-    """
-    st.markdown(css, unsafe_allow_html=True)
-
-def apply_chrome(hide_workflows: bool = True, show_workflow_divider: bool = False):
+def apply_chrome():
     _safe_set_page_config()
     _consume_redirect()
-    # Order matters: if you hide items, you probably don't want the divider label
-    if hide_workflows:
-        _hide_workflow_links()
-    if show_workflow_divider and not hide_workflows:
-        _decorate_sidebar_workflows()
+    _decorate_sidebar_workflows()
