@@ -1,43 +1,111 @@
 from datetime import date, timedelta
 import streamlit as st
+
 def init():
     if "leads" not in st.session_state:
         st.session_state.leads = _seed_leads()
     if "tasks" not in st.session_state:
         st.session_state.tasks = _seed_tasks()
     st.session_state.setdefault("selected_lead_id", None)
-    st.session_state.setdefault("case_steps", {})
+    st.session_state.setdefault("case_steps", {})  # used on Client Record
+
 def get_leads():
     return st.session_state.leads
+
 def get_lead(lead_id: str):
     return next((x for x in st.session_state.leads if x["id"] == lead_id), None)
+
 def upsert_lead(updated: dict):
-    leads = st.session_state.leads
-    for i, l in enumerate(leads):
+    for i, l in enumerate(st.session_state.leads):
         if l["id"] == updated["id"]:
-            leads[i] = updated
+            st.session_state.leads[i] = updated
             return
-    leads.append(updated)
+    st.session_state.leads.append(updated)
+
+# ---- Progress helpers ----
+def get_progress(lead_id: str) -> float:
+    lead = get_lead(lead_id)
+    return float(lead.get("progress", 0.0)) if lead else 0.0
+
+def set_progress(lead_id: str, value: float):
+    value = max(0.0, min(1.0, float(value)))
+    lead = get_lead(lead_id)
+    if lead:
+        lead["progress"] = value
+        upsert_lead(lead)
+
 def get_tasks(active_only=True):
     tasks = st.session_state.tasks
     return [t for t in tasks if not t.get("done")] if active_only else tasks
+
 def complete_task(task_id: str):
     for t in st.session_state.tasks:
         if t["id"] == task_id:
             t["done"] = True
             break
+
 def add_task(task: dict):
     st.session_state.tasks.append(task)
+
 def set_selected_lead(lead_id: str | None):
     st.session_state.selected_lead_id = lead_id
+
 def get_selected_lead_id():
     return st.session_state.selected_lead_id
+
 def _seed_leads():
+    # Added per-lead decision support mock results and estimated monthly costs
     return [
-        {"id": "LD-1001","name": "John Doe","origin": "app","city": "Baton Rouge","preference": "Assisted Living","budget": 4500,"timeline": "30 days","notes": "Needs help for spouse with mobility issues","created": date.today(),"assigned_to": None,"status": "new"},
-        {"id": "LD-1002","name": "Mary Smith","origin": "phone","city": "Seattle","preference": "In-Home Care","budget": 0,"timeline": "ASAP","notes": "Daughter calling; fall risk","created": date.today(),"assigned_to": "Advisor A","status": "new"},
-        {"id": "LD-0999","name": "Luis Alvarez","origin": "app","city": "Austin","preference": "Memory Care","budget": 5200,"timeline": "60 days","notes": "Wandering behavior flagged in app","created": date.today() - timedelta(days=1),"assigned_to": "Advisor B","status": "in_progress"},
+        {
+            "id": "LD-1001",
+            "name": "John Doe",
+            "origin": "app",
+            "city": "Baton Rouge",
+            "preference": "Assisted Living",
+            "budget": 4500,
+            "timeline": "30 days",
+            "notes": "Needs help for spouse with mobility issues",
+            "created": date.today(),
+            "assigned_to": None,
+            "status": "new",
+            "progress": 0.35,
+            "ds_recommendation": "Assisted Living",
+            "ds_est_cost": 4500,
+        },
+        {
+            "id": "LD-1002",
+            "name": "Mary Smith",
+            "origin": "phone",
+            "city": "Seattle",
+            "preference": "In-Home Care",
+            "budget": 0,
+            "timeline": "ASAP",
+            "notes": "Daughter calling; fall risk",
+            "created": date.today(),
+            "assigned_to": "Advisor A",
+            "status": "new",
+            "progress": 0.70,
+            "ds_recommendation": "In-Home Care",
+            "ds_est_cost": 8000,
+        },
+        {
+            "id": "LD-0999",
+            "name": "Luis Alvarez",
+            "origin": "app",
+            "city": "Austin",
+            "preference": "Memory Care",
+            "budget": 5200,
+            "timeline": "60 days",
+            "notes": "Wandering behavior flagged in app",
+            "created": date.today() - timedelta(days=1),
+            "assigned_to": "Advisor B",
+            "status": "in_progress",
+            "progress": 0.15,
+            "ds_recommendation": "Memory Care",
+            "ds_est_cost": 12500,
+        },
     ]
+
 def _seed_tasks():
     return [
         {"id": "T-1","title": "Call John Doe","lead_id": "LD-1001","priority": "High","due": date.today(),"origin": "app","done": False},
