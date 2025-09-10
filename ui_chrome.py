@@ -1,4 +1,5 @@
-# ui_chrome.py — robustly hide workflow pages from the sidebar
+
+# ui_chrome.py — robustly hide workflow pages from the sidebar (v2)
 import streamlit as st
 from textwrap import dedent
 
@@ -33,6 +34,7 @@ def hide_default():
     function hideItems() {{
       const side = document.querySelector('section[data-testid="stSidebar"]');
       if (!side) return;
+      let hidden = 0;
       const links = side.querySelectorAll('a[href]');
       links.forEach(a => {{
         const txt = (a.textContent || '').trim();
@@ -40,11 +42,18 @@ def hide_default():
         const hitTitle = HIDE_TITLES.includes(txt);
         const hitHref  = HIDE_HREFS.some(f => href.includes(f));
         if (hitTitle || hitHref) {{
-          (a.parentElement || a).style.display = 'none';
+          const row = a.parentElement || a;
+          if (row && row.style.display !== 'none') {{
+            row.style.display = 'none';
+            hidden++;
+          }}
         }}
       }});
+      console.debug('[ui_chrome] hid', hidden, 'sidebar link(s)');
     }}
+    // run now, after load, and after mutations
     hideItems();
+    window.addEventListener('load', hideItems);
     const obs = new MutationObserver(hideItems);
     obs.observe(document.body, {{ subtree: true, childList: true }});
     </script>

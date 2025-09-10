@@ -1,16 +1,16 @@
-# pages/00_Workflows.py
+
+# pages/00_Workflows.py — safer links, no st.page_link dependency
 import streamlit as st
 import store
 
 st.set_page_config(page_title="Workflows", page_icon="🧭", layout="wide")
 
 def go(label: str, path: str, key: str):
-    # Prefer switch_page if available; otherwise, show a plain link
     if hasattr(st, "switch_page"):
         if st.button(label, key=key):
             st.switch_page(path)  # e.g. "pages/06_Intake_Workflow.py"
     else:
-        # Fall back to a standard link. Do NOT st.write(None).
+        # fallback text link (doesn't explode when None)
         st.markdown(f"[{label}]({path})")
 
 lead_id = store.get_selected_lead_id()
