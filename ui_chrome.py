@@ -41,8 +41,29 @@ def _decorate_sidebar_workflows():
     """
     st.markdown(css, unsafe_allow_html=True)
 
+def _hide_workflow_links():
+    css = """
+    <style>
+    section[data-testid="stSidebar"]
+      a[data-testid="stSidebarNavLink"][href*="90_Intake_Workflow"],
+    section[data-testid="stSidebar"]
+      a[data-testid="stSidebarNavLink"][href*="91_Placement_Workflow"],
+    section[data-testid="stSidebar"]
+      a[data-testid="stSidebarNavLink"][href*="92_Followup_Workflow"],
+    section[data-testid="stSidebar"]
+      a[data-testid="stSidebarNavLink"][href*="88_Workflows_Section"],
+    section[data-testid="stSidebar"]
+      a[data-testid="stSidebarNavLink"][href*="89_Workflows"] {
+        color: transparent !important;   /* hides the text */
+        pointer-events: none;            /* makes them unclickable */
+    }
+    </style>
+    """
+    st.markdown(css, unsafe_allow_html=True)
+
 
 def apply_chrome():
     _safe_set_page_config()
     _consume_redirect()
     _decorate_sidebar_workflows()
+    _hide_workflow_links()
