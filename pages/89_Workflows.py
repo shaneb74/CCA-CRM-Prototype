@@ -28,12 +28,12 @@ st.markdown(
 
 st.header("Intake")
 st.caption("Collect personal, care, financial, lifestyle.")
-go("Open Intake →", "pages/06_Intake_Workflow.py", key="open_intake")
+go("Open Intake →", "pages/90_Intake_Workflow.py", key="open_intake")
 
 st.header("Placement")
 st.caption("Shortlist communities, schedule tours, record outcomes.")
-go("Open Placement →", "pages/07_Placement_Workflow.py", key="open_place")
+go("Open Placement →", "pages/91_Placement_Workflow.py", key="open_place")
 
 st.header("Follow-up")
 st.caption("Post-placement check-ins and escalations.")
-go("Open Follow-up →", "pages/08_Followup_Workflow.py", key="open_followup")
+go("Open Follow-up →", "pages/92_Followup_Workflow.py", key="open_followup")
