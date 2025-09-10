@@ -41,7 +41,18 @@ def _decorate_sidebar_workflows():
     """
     st.markdown(css, unsafe_allow_html=True)
 
+def hide_workflow_pages():
+    """Hide workflow pages from the sidebar."""
+    st.hide_pages([
+        "88_Workflows_Section",
+        "89_Workflows",
+        "90_Intake_Workflow",
+        "91_Placement_Workflow",
+        "92_Followup_Workflow",
+    ])
+
 def apply_chrome():
     _safe_set_page_config()
+    hide_workflow_pages()  # Hide pages after page config, before rendering
     _consume_redirect()
     _decorate_sidebar_workflows()
