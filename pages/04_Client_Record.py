@@ -1,4 +1,4 @@
-# 04_Client_Record.py — clearer search placement + agent names
+# 04_Client_Record.py — Start Intake shows visible fallback link
 import streamlit as st
 from datetime import date
 import store
@@ -9,7 +9,6 @@ st.title("Case Overview")
 st.markdown('<style>.page{max-width:1200px;margin:0 auto}.note{color:#6b7280}</style>', unsafe_allow_html=True)
 st.markdown('<div class="page">', unsafe_allow_html=True)
 
-# Ensure case_steps exists
 st.session_state.setdefault("case_steps", {})
 
 # --------- Filters: Agent first, then visible search ---------
@@ -33,7 +32,6 @@ def _match_name(l):
 
 filtered = [l for l in leads_all if _match_agent(l) and _match_name(l)]
 
-# Selected lead handling
 current_id = store.get_selected_lead_id()
 if not current_id or not any(l["id"] == current_id for l in filtered):
     if filtered:
@@ -108,15 +106,28 @@ st.markdown(f"**Estimated cost:** ${est:,.0f} / month")
 # Footer actions
 qa1, qa2, qa3 = st.columns([0.25,0.25,0.5])
 with qa1:
+    mine = (lead.get("assigned_to") == store.CURRENT_USER)
     if not lead.get("assigned_to"):
         st.warning("This client is unassigned.")
-    if st.button("Assign to me"):
-        lead["assigned_to"] = store.CURRENT_USER
-        store.upsert_lead(lead)
-        st.success(f"Assigned to {store.CURRENT_USER}.")
+    if st.button("Assign to me", disabled=mine):
+        if not mine:
+            lead["assigned_to"] = store.CURRENT_USER
+            store.upsert_lead(lead)
+            st.success(f"Assigned to {store.CURRENT_USER}.")
+            st.experimental_rerun()
 with qa2:
     if st.button("Start Intake"):
-        st.toast("Intake started.")
+        st.session_state["intake_lead_id"] = lead["id"]
+        # Nudge progress to show motion
+        try:
+            store.set_progress(lead["id"], max(store.get_progress(lead["id"]), 0.20))
+        except Exception:
+            pass
+        if hasattr(st, "switch_page"):
+            st.switch_page("pages/06_Intake_Workflow.py")
+        else:
+            st.success("Intake started.")
+            st.page_link("pages/06_Intake_Workflow.py", label="Open Intake Workflow →", icon="🧭")
 with qa3:
     st.caption("After tours, log results here and the pipeline will advance automatically.")
 
