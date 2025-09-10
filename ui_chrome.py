@@ -2,7 +2,7 @@
 import streamlit as st
 from textwrap import dedent
 
-# Titles as they appear in the sidebar (not file names)
+# Sidebar labels exactly as they appear
 HIDE_TITLES = [
     "Workflows",
     "Intake Workflow",
@@ -10,7 +10,7 @@ HIDE_TITLES = [
     "Followup Workflow",
 ]
 
-# Optional href fragments as a fallback (covers 00_/06_/07_/08_ filenames)
+# Optional href fragments (works in many setups; harmless otherwise)
 HIDE_HREFS = [
     "/00_Workflows",
     "/06_Intake_Workflow",
@@ -19,16 +19,13 @@ HIDE_HREFS = [
 ]
 
 def hide_default():
-    if not (HIDE_TITLES or HIDE_HREFS):
-        return
-
-    # 1) CSS fallback: hide by href fragment if present
+    # CSS-by-href fallback
     if HIDE_HREFS:
         selectors = ",".join([f'section[data-testid="stSidebar"] a[href*="{frag}"]'
                                for frag in HIDE_HREFS])
         st.markdown(f"<style>{selectors}{{display:none!important;}}</style>", unsafe_allow_html=True)
 
-    # 2) JS: hide by link text (works regardless of href structure)
+    # JS-by-label, resilient to URL changes and rerenders
     js = dedent(f"""
     <script>
     const HIDE_TITLES = {HIDE_TITLES!r};
@@ -43,16 +40,13 @@ def hide_default():
         const hitTitle = HIDE_TITLES.includes(txt);
         const hitHref  = HIDE_HREFS.some(f => href.includes(f));
         if (hitTitle || hitHref) {{
-          // Hide the whole nav row (anchor or its parent container)
           (a.parentElement || a).style.display = 'none';
         }}
       }});
     }}
-    // Run now and again after rerenders
     hideItems();
     const obs = new MutationObserver(hideItems);
-    const root = document.body;
-    if (root) obs.observe(root, {{ subtree: true, childList: true }});
+    obs.observe(document.body, {{ subtree: true, childList: true }});
     </script>
     """)
     st.markdown(js, unsafe_allow_html=True)
