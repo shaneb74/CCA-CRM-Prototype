@@ -1,0 +1,26 @@
+# pages/06_Intake_Workflow.py — guided intake (self-hidden)
+import streamlit as st
+st.set_page_config(page_title="Intake Workflow", page_icon="📝", layout="wide")
+from ui_chrome import hide_default; hide_default()
+import store, ui_sections as ui; store.init()
+lead_id = st.session_state.get("intake_lead_id") or store.get_selected_lead_id()
+lead = store.get_lead(lead_id) if lead_id else None
+if not lead: st.info("No client selected. Use Client Record or Workflows hub."); st.stop()
+st.title("Intake Workflow"); st.caption(f"{lead['name']} • {lead.get('city','')} • Assigned: {lead.get('assigned_to') or 'Unassigned'}")
+mine = ((lead.get("assigned_to") or "").strip().lower() == (store.CURRENT_USER or "").strip().lower())
+if not mine: st.error("Only the assigned advisor can run intake for this client."); st.stop()
+steps = ["Contact","Care needs","Financial","Lifestyle","Summary"]
+step = st.sidebar.radio("Steps", steps, index=0, key=f"intake_steps_{lead_id}")
+if step == "Contact": ui.personal(lead, ns="main")
+elif step == "Care needs": ui.medical(lead, ns="main")
+elif step == "Financial": ui.financial(lead, ns="main")
+elif step == "Lifestyle": ui.lifestyle(lead, ns="main")
+else: st.success("Summary"); st.button("Save", on_click=lambda: ui.save_some(lead_id))
+st.divider()
+with st.expander("Data drawers (quick access)", expanded=False):
+    t = st.tabs(["Personal","Medical","Financial","Lifestyle","Notes"])
+    with t[0]: ui.personal(lead, ns="drawer")
+    with t[1]: ui.medical(lead, ns="drawer")
+    with t[2]: ui.financial(lead, ns="drawer")
+    with t[3]: ui.lifestyle(lead, ns="drawer")
+    with t[4]: ui.notes(lead, ns="drawer")

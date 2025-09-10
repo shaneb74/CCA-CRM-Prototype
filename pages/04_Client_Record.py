@@ -163,9 +163,9 @@ if st.session_state.show_intake_inline and mine:
     with b1:
         if st.button("Open full Intake page →", key=f"open_full_{lead['id']}"):
             if hasattr(st, "switch_page"):
-                st.switch_page("pages/06_Intake_Workflow.py")
+                st.switch_page("pages/90_Intake_Workflow.py")
             else:
-                st.page_link("pages/06_Intake_Workflow.py", label="Open Intake Workflow", icon="🧭")
+                st.page_link("pages/90_Intake_Workflow.py", label="Open Intake Workflow", icon="🧭")
     with b2:
         if st.button("Close inline Intake", key=f"close_inline_{lead['id']}"):
             st.session_state.show_intake_inline = False

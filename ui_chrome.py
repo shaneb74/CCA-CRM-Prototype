@@ -1,46 +1,56 @@
-# ui_chrome.py
 import streamlit as st
 
 def set_wide():
-    # Safe even if called multiple times or not first
     try:
         st.set_page_config(page_title="CCA CRM Prototype", page_icon="📋", layout="wide")
     except Exception:
         pass
 
-def hide_default():
-    """Keep whatever you already hide (toolbar, footer, etc.)."""
+def decorate_sidebar_with_workflow_divider():
+    """
+    Adds a horizontal rule and a 'Workflows' label above the first workflow link,
+    and keeps all workflow links visually grouped.
+    This targets files renamed to 90/91/92_* as suggested.
+    """
     css = """
     <style>
-      footer {visibility:hidden;}
-      #MainMenu {visibility:hidden;}
+    /* Sidebar base selector */
+    section[data-testid="stSidebar"] {
+      --divider: #e5e7eb;      /* light gray */
+      --muted: #6b7280;        /* gray-500 */
+    }
+
+    /* Add a group label + divider above the first workflow link */
+    section[data-testid="stSidebar"]
+      a[data-testid="stSidebarNavLink"][href*="90_Intake_Workflow"] {
+        margin-top: 14px;
+        padding-top: 12px;
+        border-top: 1px solid var(--divider);
+    }
+    section[data-testid="stSidebar"]
+      a[data-testid="stSidebarNavLink"][href*="90_Intake_Workflow"]::before {
+        content: "Workflows";
+        display: block;
+        font-size: 12px;
+        color: var(--muted);
+        margin-bottom: 6px;
+        letter-spacing: .02em;
+        text-transform: none;
+    }
+
+    /* Slightly mute the workflow items so the group reads as secondary */
+    section[data-testid="stSidebar"]
+      a[data-testid="stSidebarNavLink"][href*="90_Intake_Workflow"],
+    section[data-testid="stSidebar"]
+      a[data-testid="stSidebarNavLink"][href*="91_Placement_Workflow"],
+    section[data-testid="stSidebar"]
+      a[data-testid="stSidebarNavLink"][href*="92_Followup_Workflow"] {
+        opacity: 0.95;
+    }
     </style>
     """
     st.markdown(css, unsafe_allow_html=True)
 
-def hide_workflow_nav():
-    """
-    Hide workflow pages from the left nav everywhere:
-    - 00_Workflows.py
-    - 06_Intake_Workflow.py
-    - 07_Placement_Workflow.py
-    - 08_Followup_Workflow.py
-    This relies on the file name appearing in the link href (Streamlit default).
-    """
-    selectors = [
-        "00_Workflows",
-        "06_Intake_Workflow",
-        "07_Placement_Workflow",
-        "08_Followup_Workflow",
-    ]
-    css_rules = "\n".join(
-        [f"""a[data-testid="stSidebarNavLink"][href*="{name}"] {{ display: none !important; }}"""
-         for name in selectors]
-    )
-    st.markdown(f"<style>{css_rules}</style>", unsafe_allow_html=True)
-
 def apply_chrome():
-    """One call to rule them all: wide + default hides + workflow hides."""
     set_wide()
-    hide_default()
-    hide_workflow_nav()
+    decorate_sidebar_with_workflow_divider()
