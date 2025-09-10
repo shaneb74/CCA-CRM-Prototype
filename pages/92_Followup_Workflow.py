@@ -16,6 +16,8 @@ def boot():
         "92_Followup_Workflow",
     ]) 
 
+store.init()
+
 lead = store.get_lead(store.get_selected_lead_id()) if store.get_selected_lead_id() else None
 if not lead:
     st.info("Select a client, then return.")
