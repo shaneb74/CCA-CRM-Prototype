@@ -1,6 +1,21 @@
+# ui_chrome.py
 import streamlit as st
 
+def _consume_pending_redirect():
+    """If a prior click scheduled a redirect, do it immediately on top-of-run."""
+    dest = st.session_state.pop("_goto_page", None)
+    if not dest:
+        return
+    try:
+        if hasattr(st, "switch_page"):
+            st.switch_page(dest)
+    except Exception:
+        # If switch_page isn't available, do nothing; user stays on current page.
+        # We don't re-set the flag to avoid loops.
+        pass
+
 def set_wide():
+    """Safe wide layout; ignore if already set elsewhere."""
     try:
         st.set_page_config(page_title="CCA CRM Prototype", page_icon="📋", layout="wide")
     except Exception:
@@ -8,67 +23,40 @@ def set_wide():
 
 def decorate_sidebar_with_workflow_divider():
     """
-    Adds a horizontal rule and a 'Workflows' label above the first workflow link,
-    and keeps all workflow links visually grouped.
-    This targets files renamed to 90/91/92_* as suggested.
+    Visually separate workflow pages; assumes you've renamed them 90/91/92_*.
     """
     css = """
     <style>
-    /* Sidebar base selector */
-    section[data-testid="stSidebar"] {
-      --divider: #e5e7eb;      /* light gray */
-      --muted: #6b7280;        /* gray-500 */
-    }
-
-    /* Add a group label + divider above the first workflow link */
-    section[data-testid="stSidebar"]
-      a[data-testid="stSidebarNavLink"][href*="90_Intake_Workflow"] {
-        margin-top: 14px;
-        padding-top: 12px;
-        border-top: 1px solid var(--divider);
-    }
-    section[data-testid="stSidebar"]
-      a[data-testid="stSidebarNavLink"][href*="90_Intake_Workflow"]::before {
-        content: "Workflows";
-        display: block;
-        font-size: 12px;
-        color: var(--muted);
-        margin-bottom: 6px;
-        letter-spacing: .02em;
-        text-transform: none;
-    }
-
-    /* Slightly mute the workflow items so the group reads as secondary */
-    section[data-testid="stSidebar"]
-      a[data-testid="stSidebarNavLink"][href*="90_Intake_Workflow"],
-    section[data-testid="stSidebar"]
-      a[data-testid="stSidebarNavLink"][href*="91_Placement_Workflow"],
-    section[data-testid="stSidebar"]
-      a[data-testid="stSidebarNavLink"][href*="92_Followup_Workflow"] {
-        opacity: 0.95;
-    }
+      section[data-testid="stSidebar"] { --divider:#e5e7eb; --muted:#6b7280; }
+      section[data-testid="stSidebar"] a[data-testid="stSidebarNavLink"][href*="90_Intake_Workflow"]{
+        margin-top:14px; padding-top:12px; border-top:1px solid var(--divider);
+      }
+      section[data-testid="stSidebar"] a[data-testid="stSidebarNavLink"][href*="90_Intake_Workflow"]::before{
+        content:"Workflows"; display:block; font-size:12px; color:var(--muted); margin-bottom:6px; letter-spacing:.02em;
+      }
+      section[data-testid="stSidebar"] a[data-testid="stSidebarNavLink"][href*="90_Intake_Workflow"],
+      section[data-testid="stSidebar"] a[data-testid="stSidebarNavLink"][href*="91_Placement_Workflow"],
+      section[data-testid="stSidebar"] a[data-testid="stSidebarNavLink"][href*="92_Followup_Workflow"]{
+        opacity:.95;
+      }
+      footer, #MainMenu { visibility:hidden; }
     </style>
     """
     st.markdown(css, unsafe_allow_html=True)
 
+def hide_default():
+    """
+    Backwards-compatible entry point many pages already import.
+    Runs redirect consumption early, then minimal chrome.
+    """
+    _consume_pending_redirect()
+    # Minimal chrome (kept here so old imports still have some effect)
+    st.markdown("<style>footer,#MainMenu{visibility:hidden;}</style>", unsafe_allow_html=True)
+
 def apply_chrome():
+    """
+    One call to rule them all. Use this if you want the full treatment.
+    """
+    _consume_pending_redirect()
     set_wide()
     decorate_sidebar_with_workflow_divider()
-
-
-def consume_pending_redirect():
-    """If a prior click scheduled a redirect, do it now on top-of-run."""
-    dest = st.session_state.pop("_goto_page", None)
-    if dest:
-        try:
-            if hasattr(st, "switch_page"):
-                st.switch_page(dest)
-        except Exception:
-            pass  # worst case, we just ignore
-
-def apply_chrome():
-    # whatever you already do...
-    try:
-        consume_pending_redirect()
-    except Exception:
-        pass
