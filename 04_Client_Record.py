@@ -1,4 +1,4 @@
-# 04_Client_Record.py — assign button gated; Start Intake routes to workflow
+# 04_Client_Record.py — Start Intake shows visible fallback link
 import streamlit as st
 from datetime import date
 import store
@@ -9,7 +9,6 @@ st.title("Case Overview")
 st.markdown('<style>.page{max-width:1200px;margin:0 auto}.note{color:#6b7280}</style>', unsafe_allow_html=True)
 st.markdown('<div class="page">', unsafe_allow_html=True)
 
-# Ensure case_steps exists
 st.session_state.setdefault("case_steps", {})
 
 # --------- Filters: Agent first, then visible search ---------
@@ -33,7 +32,6 @@ def _match_name(l):
 
 filtered = [l for l in leads_all if _match_agent(l) and _match_name(l)]
 
-# Selected lead handling
 current_id = store.get_selected_lead_id()
 if not current_id or not any(l["id"] == current_id for l in filtered):
     if filtered:
@@ -120,7 +118,7 @@ with qa1:
 with qa2:
     if st.button("Start Intake"):
         st.session_state["intake_lead_id"] = lead["id"]
-        # move progress a notch to show motion in demo
+        # Nudge progress to show motion
         try:
             store.set_progress(lead["id"], max(store.get_progress(lead["id"]), 0.20))
         except Exception:
@@ -128,7 +126,8 @@ with qa2:
         if hasattr(st, "switch_page"):
             st.switch_page("pages/06_Intake_Workflow.py")
         else:
-            st.experimental_rerun()
+            st.success("Intake started.")
+            st.page_link("pages/06_Intake_Workflow.py", label="Open Intake Workflow →", icon="🧭")
 with qa3:
     st.caption("After tours, log results here and the pipeline will advance automatically.")
 
