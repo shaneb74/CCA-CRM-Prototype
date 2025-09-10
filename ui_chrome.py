@@ -1,30 +1,46 @@
 # ui_chrome.py
 import streamlit as st
 
-# call this at the top of every page once (you already do this from store/app)
+def set_wide():
+    # Safe even if called multiple times or not first
+    try:
+        st.set_page_config(page_title="CCA CRM Prototype", page_icon="📋", layout="wide")
+    except Exception:
+        pass
+
 def hide_default():
-    st.markdown(
-        """
-        <style>
-        /* keep sidebar tidy */
-        section[data-testid="stSidebar"] [data-testid="stSidebarNav"] {padding-top: .5rem;}
-        /* --- HIDE specific pages in the sidebar nav --- */
+    """Keep whatever you already hide (toolbar, footer, etc.)."""
+    css = """
+    <style>
+      footer {visibility:hidden;}
+      #MainMenu {visibility:hidden;}
+    </style>
+    """
+    st.markdown(css, unsafe_allow_html=True)
 
-        /* List every route slug part that should be hidden.
-           We match contains() because Streamlit builds hrefs like /<app>/?page=pages%2F06_Intake_Workflow.py
-           These cover both the hub and the three child workflow pages. */
-
-        section[data-testid="stSidebar"] [data-testid="stSidebarNav"] a[href*="00_Workflows.py"] {display:none !important;}
-        section[data-testid="stSidebar"] [data-testid="stSidebarNav"] a[href*="06_Intake_Workflow.py"] {display:none !important;}
-        section[data-testid="stSidebar"] [data-testid="stSidebarNav"] a[href*="07_Placement_Workflow.py"] {display:none !important;}
-        section[data-testid="stSidebar"] [data-testid="stSidebarNav"] a[href*="08_Followup_Workflow.py"] {display:none !important;}
-
-        /* Fallback: also hide by title slugs in case Streamlit changes the query-path */
-        section[data-testid="stSidebar"] [data-testid="stSidebarNav"] a[href*="Workflows"] {display:none !important;}
-        section[data-testid="stSidebar"] [data-testid="stSidebarNav"] a[href*="Intake_Workflow"] {display:none !important;}
-        section[data-testid="stSidebar"] [data-testid="stSidebarNav"] a[href*="Placement_Workflow"] {display:none !important;}
-        section[data-testid="stSidebar"] [data-testid="stSidebarNav"] a[href*="Followup_Workflow"] {display:none !important;}
-        </style>
-        """,
-        unsafe_allow_html=True,
+def hide_workflow_nav():
+    """
+    Hide workflow pages from the left nav everywhere:
+    - 00_Workflows.py
+    - 06_Intake_Workflow.py
+    - 07_Placement_Workflow.py
+    - 08_Followup_Workflow.py
+    This relies on the file name appearing in the link href (Streamlit default).
+    """
+    selectors = [
+        "00_Workflows",
+        "06_Intake_Workflow",
+        "07_Placement_Workflow",
+        "08_Followup_Workflow",
+    ]
+    css_rules = "\n".join(
+        [f"""a[data-testid="stSidebarNavLink"][href*="{name}"] {{ display: none !important; }}"""
+         for name in selectors]
     )
+    st.markdown(f"<style>{css_rules}</style>", unsafe_allow_html=True)
+
+def apply_chrome():
+    """One call to rule them all: wide + default hides + workflow hides."""
+    set_wide()
+    hide_default()
+    hide_workflow_nav()
