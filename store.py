@@ -3,9 +3,11 @@ from datetime import date, timedelta
 import streamlit as st
 from models import Lead, Task, Advisor, Origin, Status, Priority
 
+
+# NEW: central chrome injection for all pages
 try:
-    from ui_chrome import hide_default
-    hide_default()
+    from ui_chrome import apply_chrome
+    apply_chrome()
 except Exception:
     pass
 
