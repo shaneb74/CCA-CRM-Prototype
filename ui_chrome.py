@@ -54,3 +54,21 @@ def decorate_sidebar_with_workflow_divider():
 def apply_chrome():
     set_wide()
     decorate_sidebar_with_workflow_divider()
+
+
+def consume_pending_redirect():
+    """If a prior click scheduled a redirect, do it now on top-of-run."""
+    dest = st.session_state.pop("_goto_page", None)
+    if dest:
+        try:
+            if hasattr(st, "switch_page"):
+                st.switch_page(dest)
+        except Exception:
+            pass  # worst case, we just ignore
+
+def apply_chrome():
+    # whatever you already do...
+    try:
+        consume_pending_redirect()
+    except Exception:
+        pass

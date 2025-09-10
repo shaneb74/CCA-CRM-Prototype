@@ -204,11 +204,13 @@ with btns[1]:
     )
 
 with btns[2]:
-    st.button(
-        "Open Placement Workflow",
-        on_click=_open_placement,
-        disabled=False,
-        key="open_placement_btn",
-    )
+    if st.button("Open Placement Workflow", key="open_placement_btn"):
+        if lead and lead.get("id"):
+            store.set_selected_lead(lead["id"])
+       
+        # schedule redirect on next run; hook #1 will consume it immediately
+        st.session_state["_goto_page"] = "pages/91_Placement_Workflow.py"
+        st.rerun()
+    
 
 st.caption("After tours, log results here and the pipeline will advance automatically.")
