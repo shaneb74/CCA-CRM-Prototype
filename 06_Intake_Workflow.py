@@ -1,6 +1,5 @@
-# 06_Intake_Workflow.py — unchanged core, ensures it uses intake_lead_id
+# 06_Intake_Workflow.py — unchanged, just a strong title
 import streamlit as st
-from datetime import date
 import store
 
 store.init()
@@ -77,6 +76,4 @@ with a2:
         if hasattr(st, "switch_page"):
             st.switch_page("pages/04_Client_Record.py")
         else:
-            st.page_link("pages/04_Client_Record.py", label="Back to Client Record →", icon="↩️")
-
-st.caption("Tip: If the Intake Workflow doesn't auto-navigate, use the link shown and consider upgrading Streamlit to enable st.switch_page.")
+            st.warning("Use the sidebar to open 'Client Record'.")
