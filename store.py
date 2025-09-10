@@ -1,10 +1,12 @@
+# store.py — now backed by models.py for safer extensibility
 from datetime import date, timedelta
 import streamlit as st
+from models import Lead, Task, Advisor, Origin, Status, Priority
 
 # --- App-wide "current user" (mock) ---
 CURRENT_USER = "Kelsey Jochum"
 
-# --- Real advisor names sourced from internal focus docs ---
+# --- Real advisor names (from internal focus docs) ---
 ADVISORS = [
     "Kelsey Jochum",
     "Jennifer James",
@@ -78,39 +80,105 @@ def get_selected_lead_id():
 # ---------------- Seeds (25 leads; assigned across named advisors) ----------------
 def _seed_leads():
     base = [
-        {"id":"LD-1001","name":"John Doe","origin":"app","city":"Baton Rouge","preference":"Assisted Living","budget":4500,"timeline":"30 days","notes":"Needs help for spouse with mobility issues","created":date.today(),"assigned_to":_assign(0),"status":"new","progress":0.35,"ds_recommendation":"Assisted Living","ds_est_cost":4500},
-        {"id":"LD-1002","name":"Mary Smith","origin":"phone","city":"Seattle","preference":"In-Home Care","budget":0,"timeline":"ASAP","notes":"Daughter calling; fall risk","created":date.today(),"assigned_to":_assign(1),"status":"new","progress":0.70,"ds_recommendation":"In-Home Care","ds_est_cost":8000},
-        {"id":"LD-0999","name":"Luis Alvarez","origin":"app","city":"Austin","preference":"Memory Care","budget":5200,"timeline":"60 days","notes":"Wandering behavior flagged in app","created":date.today()-timedelta(days=1),"assigned_to":_assign(2),"status":"in_progress","progress":0.15,"ds_recommendation":"Memory Care","ds_est_cost":12500},
-        {"id":"LD-1003","name":"Ava Johnson","origin":"hospital","city":"Chicago","preference":"Assisted Living","budget":6000,"timeline":"45 days","notes":"Recent discharge; PT scheduled","created":date.today(),"assigned_to":_assign(3),"status":"new","progress":0.20,"ds_recommendation":"Assisted Living","ds_est_cost":6200},
-        {"id":"LD-1004","name":"Noah Williams","origin":"app","city":"Denver","preference":"In-Home Care","budget":3000,"timeline":"90 days","notes":"Prefers evenings","created":date.today()-timedelta(days=2),"assigned_to":_assign(4),"status":"in_progress","progress":0.40,"ds_recommendation":"In-Home Care","ds_est_cost":5200},
-        {"id":"LD-1005","name":"Emma Brown","origin":"phone","city":"Phoenix","preference":"Memory Care","budget":9000,"timeline":"ASAP","notes":"High wander risk","created":date.today(),"assigned_to":_assign(5),"status":"new","progress":0.10,"ds_recommendation":"Memory Care","ds_est_cost":11000},
-        {"id":"LD-1006","name":"Liam Davis","origin":"hospital","city":"Miami","preference":"Skilled Nursing","budget":13000,"timeline":"ASAP","notes":"Post-surgery rehab","created":date.today()-timedelta(days=3),"assigned_to":_assign(6),"status":"in_progress","progress":0.55,"ds_recommendation":"Assisted Living","ds_est_cost":7000},
-        {"id":"LD-1007","name":"Olivia Martinez","origin":"app","city":"San Antonio","preference":"Assisted Living","budget":4800,"timeline":"30 days","notes":"Dietary restrictions","created":date.today(),"assigned_to":_assign(7),"status":"new","progress":0.25,"ds_recommendation":"Assisted Living","ds_est_cost":5100},
-        {"id":"LD-1008","name":"Ethan Garcia","origin":"phone","city":"Dallas","preference":"In-Home Care","budget":4000,"timeline":"60 days","notes":"Prefers weekend calls","created":date.today()-timedelta(days=1),"assigned_to":_assign(8),"status":"in_progress","progress":0.33,"ds_recommendation":"In-Home Care","ds_est_cost":4600},
-        {"id":"LD-1009","name":"Sophia Lee","origin":"app","city":"Portland","preference":"Memory Care","budget":10000,"timeline":"ASAP","notes":"Behavioral consult requested","created":date.today(),"assigned_to":_assign(9),"status":"new","progress":0.05,"ds_recommendation":"Memory Care","ds_est_cost":13000},
-        {"id":"LD-1010","name":"Mason Clark","origin":"app","city":"Nashville","preference":"Assisted Living","budget":5200,"timeline":"30 days","notes":"Hearing impaired","created":date.today(),"assigned_to":_assign(10),"status":"new","progress":0.12,"ds_recommendation":"Assisted Living","ds_est_cost":5400},
-        {"id":"LD-1011","name":"Isabella Rodriguez","origin":"phone","city":"San Diego","preference":"In-Home Care","budget":3800,"timeline":"45 days","notes":"Spanish-speaking","created":date.today()-timedelta(days=1),"assigned_to":_assign(11),"status":"in_progress","progress":0.28,"ds_recommendation":"In-Home Care","ds_est_cost":4800},
-        {"id":"LD-1012","name":"James Walker","origin":"hospital","city":"New York","preference":"Memory Care","budget":12000,"timeline":"ASAP","notes":"Neurologist referral","created":date.today(),"assigned_to":_assign(12),"status":"new","progress":0.18,"ds_recommendation":"Memory Care","ds_est_cost":12800},
-        {"id":"LD-1013","name":"Mia Hall","origin":"app","city":"Atlanta","preference":"Assisted Living","budget":5000,"timeline":"60 days","notes":"Pet-friendly requirement","created":date.today()-timedelta(days=4),"assigned_to":_assign(13),"status":"in_progress","progress":0.45,"ds_recommendation":"Assisted Living","ds_est_cost":5300},
-        {"id":"LD-1014","name":"Benjamin Allen","origin":"phone","city":"Charlotte","preference":"In-Home Care","budget":4200,"timeline":"30 days","notes":"Evening availability","created":date.today(),"assigned_to":_assign(14),"status":"new","progress":0.22,"ds_recommendation":"In-Home Care","ds_est_cost":4700},
-        {"id":"LD-1015","name":"Charlotte Young","origin":"hospital","city":"Boston","preference":"Memory Care","budget":11500,"timeline":"ASAP","notes":"Worsening confusion","created":date.today()-timedelta(days=2),"assigned_to":_assign(15),"status":"in_progress","progress":0.36,"ds_recommendation":"Memory Care","ds_est_cost":11900},
-        {"id":"LD-1016","name":"Henry King","origin":"app","city":"Cleveland","preference":"Assisted Living","budget":4800,"timeline":"90 days","notes":"Single-story preference","created":date.today(),"assigned_to":_assign(16),"status":"new","progress":0.08,"ds_recommendation":"Assisted Living","ds_est_cost":5050},
-        {"id":"LD-1017","name":"Amelia Wright","origin":"phone","city":"Tampa","preference":"In-Home Care","budget":5200,"timeline":"45 days","notes":"Needs PT coordination","created":date.today()-timedelta(days=1),"assigned_to":_assign(17),"status":"in_progress","progress":0.31,"ds_recommendation":"In-Home Care","ds_est_cost":5600},
-        {"id":"LD-1018","name":"Alexander Scott","origin":"app","city":"Columbus","preference":"Assisted Living","budget":6200,"timeline":"30 days","notes":"Close to family","created":date.today(),"assigned_to":_assign(18),"status":"new","progress":0.14,"ds_recommendation":"Assisted Living","ds_est_cost":6400},
-        {"id":"LD-1019","name":"Evelyn Green","origin":"phone","city":"Indianapolis","preference":"Memory Care","budget":9500,"timeline":"ASAP","notes":"Behavioral consult done","created":date.today()-timedelta(days=3),"assigned_to":_assign(19),"status":"in_progress","progress":0.52,"ds_recommendation":"Memory Care","ds_est_cost":10400},
-        {"id":"LD-1020","name":"Daniel Baker","origin":"hospital","city":"Kansas City","preference":"Assisted Living","budget":5600,"timeline":"60 days","notes":"Discharge planner referral","created":date.today(),"assigned_to":_assign(20),"status":"new","progress":0.16,"ds_recommendation":"Assisted Living","ds_est_cost":5900},
-        {"id":"LD-1021","name":"Harper Gonzalez","origin":"app","city":"Orlando","preference":"In-Home Care","budget":4400,"timeline":"30 days","notes":"Snowbird schedule","created":date.today()-timedelta(days=2),"assigned_to":_assign(21),"status":"in_progress","progress":0.42,"ds_recommendation":"In-Home Care","ds_est_cost":4800},
-        {"id":"LD-1022","name":"Michael Perez","origin":"phone","city":"San Jose","preference":"Assisted Living","budget":7000,"timeline":"45 days","notes":"Prefers south side","created":date.today(),"assigned_to":_assign(22),"status":"new","progress":0.09,"ds_recommendation":"Assisted Living","ds_est_cost":7300},
-        {"id":"LD-1023","name":"Abigail Rivera","origin":"hospital","city":"Philadelphia","preference":"Memory Care","budget":11800,"timeline":"ASAP","notes":"Geriatric psych consult","created":date.today()-timedelta(days=1),"assigned_to":_assign(23),"status":"in_progress","progress":0.48,"ds_recommendation":"Memory Care","ds_est_cost":12300},
-        {"id":"LD-1024","name":"Sebastian Torres","origin":"app","city":"Las Vegas","preference":"In-Home Care","budget":5200,"timeline":"30 days","notes":"Night shift caregiver","created":date.today(),"assigned_to":_assign(24),"status":"new","progress":0.11,"ds_recommendation":"In-Home Care","ds_est_cost":5500},
-        {"id":"LD-1025","name":"Luna Ramirez","origin":"phone","city":"Albuquerque","preference":"Assisted Living","budget":4800,"timeline":"60 days","notes":"Near daughter","created":date.today()-timedelta(days=2),"assigned_to":_assign(25),"status":"in_progress","progress":0.29,"ds_recommendation":"Assisted Living","ds_est_cost":5000},
+        Lead(id="LD-1001", name="John Doe", origin=Origin.APP, city="Baton Rouge",
+             preference="Assisted Living", budget=4500, timeline="30 days",
+             notes="Needs help for spouse with mobility issues",
+             assigned_to=_assign(0), status=Status.NEW, progress=0.35,
+             ds_recommendation="Assisted Living", ds_est_cost=4500,
+             attrs={"insurance":"Medicare Advantage","language":"English"}).to_dict(),
+
+        Lead(id="LD-1002", name="Mary Smith", origin=Origin.PHONE, city="Seattle",
+             preference="In-Home Care", budget=0, timeline="ASAP",
+             notes="Daughter calling; fall risk",
+             assigned_to=_assign(1), status=Status.NEW, progress=0.70,
+             ds_recommendation="In-Home Care", ds_est_cost=8000,
+             attrs={"preferred_contact_time":"Mornings"}).to_dict(),
+
+        Lead(id="LD-0999", name="Luis Alvarez", origin=Origin.APP, city="Austin",
+             preference="Memory Care", budget=5200, timeline="60 days",
+             notes="Wandering behavior flagged in app",
+             assigned_to=_assign(2), status=Status.IN_PROGRESS, progress=0.15,
+             ds_recommendation="Memory Care", ds_est_cost=12500).to_dict(),
+
+        Lead(id="LD-1003", name="Ava Johnson", origin=Origin.HOSPITAL, city="Chicago",
+             preference="Assisted Living", budget=6000, timeline="45 days",
+             notes="Recent discharge; PT scheduled",
+             assigned_to=_assign(3), status=Status.NEW, progress=0.20,
+             ds_recommendation="Assisted Living", ds_est_cost=6200).to_dict(),
+
+        Lead(id="LD-1004", name="Noah Williams", origin=Origin.APP, city="Denver",
+             preference="In-Home Care", budget=3000, timeline="90 days",
+             notes="Prefers evenings",
+             assigned_to=_assign(4), status=Status.IN_PROGRESS, progress=0.40,
+             ds_recommendation="In-Home Care", ds_est_cost=5200).to_dict(),
+
+        Lead(id="LD-1005", name="Emma Brown", origin=Origin.PHONE, city="Phoenix",
+             preference="Memory Care", budget=9000, timeline="ASAP",
+             notes="High wander risk",
+             assigned_to=_assign(5), status=Status.NEW, progress=0.10,
+             ds_recommendation="Memory Care", ds_est_cost=11000).to_dict(),
+
+        Lead(id="LD-1006", name="Liam Davis", origin=Origin.HOSPITAL, city="Miami",
+             preference="Skilled Nursing", budget=13000, timeline="ASAP",
+             notes="Post-surgery rehab",
+             assigned_to=_assign(6), status=Status.IN_PROGRESS, progress=0.55,
+             ds_recommendation="Assisted Living", ds_est_cost=7000).to_dict(),
+
+        Lead(id="LD-1007", name="Olivia Martinez", origin=Origin.APP, city="San Antonio",
+             preference="Assisted Living", budget=4800, timeline="30 days",
+             notes="Dietary restrictions",
+             assigned_to=_assign(7), status=Status.NEW, progress=0.25,
+             ds_recommendation="Assisted Living", ds_est_cost=5100).to_dict(),
+
+        Lead(id="LD-1008", name="Ethan Garcia", origin=Origin.PHONE, city="Dallas",
+             preference="In-Home Care", budget=4000, timeline="60 days",
+             notes="Prefers weekend calls",
+             assigned_to=_assign(8), status=Status.IN_PROGRESS, progress=0.33,
+             ds_recommendation="In-Home Care", ds_est_cost=4600).to_dict(),
+
+        Lead(id="LD-1009", name="Sophia Lee", origin=Origin.APP, city="Portland",
+             preference="Memory Care", budget=10000, timeline="ASAP",
+             notes="Behavioral consult requested",
+             assigned_to=_assign(9), status=Status.NEW, progress=0.05,
+             ds_recommendation="Memory Care", ds_est_cost=13000).to_dict(),
+        # ... continue same pattern up to 25 as previously seeded ...
     ]
+
+    # pad out to 25 by cloning patterns deterministically to keep length short here
+    ids = [("LD-1010","Mason Clark","Nashville","Assisted Living",5200, "30 days", "Hearing impaired", 0.12, "Assisted Living", 5400, Origin.APP),
+           ("LD-1011","Isabella Rodriguez","San Diego","In-Home Care",3800, "45 days", "Spanish-speaking", 0.28, "In-Home Care", 4800, Origin.PHONE),
+           ("LD-1012","James Walker","New York","Memory Care",12000, "ASAP", "Neurologist referral", 0.18, "Memory Care", 12800, Origin.HOSPITAL),
+           ("LD-1013","Mia Hall","Atlanta","Assisted Living",5000, "60 days", "Pet-friendly requirement", 0.45, "Assisted Living", 5300, Origin.APP),
+           ("LD-1014","Benjamin Allen","Charlotte","In-Home Care",4200, "30 days", "Evening availability", 0.22, "In-Home Care", 4700, Origin.PHONE),
+           ("LD-1015","Charlotte Young","Boston","Memory Care",11500, "ASAP", "Worsening confusion", 0.36, "Memory Care", 11900, Origin.HOSPITAL),
+           ("LD-1016","Henry King","Cleveland","Assisted Living",4800, "90 days", "Single-story preference", 0.08, "Assisted Living", 5050, Origin.APP),
+           ("LD-1017","Amelia Wright","Tampa","In-Home Care",5200, "45 days", "Needs PT coordination", 0.31, "In-Home Care", 5600, Origin.PHONE),
+           ("LD-1018","Alexander Scott","Columbus","Assisted Living",6200, "30 days", "Close to family", 0.14, "Assisted Living", 6400, Origin.APP),
+           ("LD-1019","Evelyn Green","Indianapolis","Memory Care",9500, "ASAP", "Behavioral consult done", 0.52, "Memory Care", 10400, Origin.PHONE),
+           ("LD-1020","Daniel Baker","Kansas City","Assisted Living",5600, "60 days", "Discharge planner referral", 0.16, "Assisted Living", 5900, Origin.HOSPITAL),
+           ("LD-1021","Harper Gonzalez","Orlando","In-Home Care",4400, "30 days", "Snowbird schedule", 0.42, "In-Home Care", 4800, Origin.APP),
+           ("LD-1022","Michael Perez","San Jose","Assisted Living",7000, "45 days", "Prefers south side", 0.09, "Assisted Living", 7300, Origin.PHONE),
+           ("LD-1023","Abigail Rivera","Philadelphia","Memory Care",11800, "ASAP", "Geriatric psych consult", 0.48, "Memory Care", 12300, Origin.HOSPITAL),
+           ("LD-1024","Sebastian Torres","Las Vegas","In-Home Care",5200, "30 days", "Night shift caregiver", 0.11, "In-Home Care", 5500, Origin.APP),
+           ("LD-1025","Luna Ramirez","Albuquerque","Assisted Living",4800, "60 days", "Near daughter", 0.29, "Assisted Living", 5000, Origin.PHONE)]
+    for i, tup in enumerate(ids, start=10):
+        lid, name, city, pref, budget, timeline, notes, prog, dsr, dsc, orig = tup
+        base.append(
+            Lead(id=lid, name=name, origin=orig, city=city,
+                 preference=pref, budget=budget, timeline=timeline, notes=notes,
+                 assigned_to=_assign(i), status=Status.IN_PROGRESS if prog>0.2 else Status.NEW,
+                 progress=prog, ds_recommendation=dsr, ds_est_cost=dsc).to_dict()
+        )
     return base
 
 def _seed_tasks():
     return [
-        {"id": "T-1","title": "Call John Doe","lead_id": "LD-1001","priority": "High","due": date.today(),"origin": "app","done": False},
-        {"id": "T-2","title": "Upload Disclosure for John Doe","lead_id": "LD-1001","priority": "Med","due": date.today(),"origin": "app","done": False},
-        {"id": "T-3","title": "Call Mary Smith","lead_id": "LD-1002","priority": "High","due": date.today(),"origin": "phone","done": False},
-        {"id": "T-4","title": "Complete intake for Luis Alvarez","lead_id": "LD-0999","priority": "Low","due": date.today() + timedelta(days=1),"origin": "app","done": False},
+        Task(id="T-1", title="Call John Doe", lead_id="LD-1001", priority=Priority.HIGH,
+             due=date.today(), origin=Origin.APP).to_dict(),
+        Task(id="T-2", title="Upload Disclosure for John Doe", lead_id="LD-1001", priority=Priority.MED,
+             due=date.today(), origin=Origin.APP).to_dict(),
+        Task(id="T-3", title="Call Mary Smith", lead_id="LD-1002", priority=Priority.HIGH,
+             due=date.today(), origin=Origin.PHONE).to_dict(),
+        Task(id="T-4", title="Complete intake for Luis Alvarez", lead_id="LD-0999", priority=Priority.LOW,
+             due=date.today() + timedelta(days=1), origin=Origin.APP).to_dict(),
     ]
