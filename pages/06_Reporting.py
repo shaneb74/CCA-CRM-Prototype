@@ -1,19 +1,11 @@
-# pages/06_Reporting.py
-from __future__ import annotations
-import streamlit as st
 
-# Safe page-config & redirect wrapper (no-op if already set)
+# pages/06_Reporting.py
+import streamlit as st
 try:
     from ui_chrome import apply_chrome
     apply_chrome()
 except Exception:
-    # Fallback guard: only set config if not already set this run
-    if "_page_config_applied" not in st.session_state:
-        try:
-            st.set_page_config(page_title="Reporting", page_icon="📊", layout="wide")
-        except Exception:
-            pass
-        st.session_state["_page_config_applied"] = True
+    pass
 
 st.set_page_config(page_title="Reporting", page_icon="📊", layout="wide")
 
