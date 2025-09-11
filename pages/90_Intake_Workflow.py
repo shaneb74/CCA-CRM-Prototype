@@ -292,7 +292,7 @@ with st.container():
         with cols[0]:
             _pill("Origin", origin)
         with cols[1]:
-            _pill("Received", "just now")
+            _pill("Received", "59m ago")
 
 # Compute stage state
 steps = _steps_state_for_lead(lead_id)
@@ -322,24 +322,25 @@ with st.container():
 
 # Body: left drawers + right Case snapshot
 with st.container():
-    left, right = st.columns([2.5, 2], gap="large")
-    with left:
-        for i, label in enumerate(STAGES):
-            with st.expander(label, expanded=(i == active_idx)):
-                st.markdown(f'<div class="expander{" expander-active" if i == active_idx else ""}">', unsafe_allow_html=True)
-                st.checkbox("Mark complete", key=f"step_{i}", value=steps[i])
-                st.markdown('</div>', unsafe_allow_html=True)
-    with right:
-        with st.markdown('<div class="case-snapshot">', unsafe_allow_html=True):
-            st.subheader("Case snapshot")
-            st.markdown(f'<div class="snapshot-field"><span class="snapshot-label">Client:</span> {name} • {city}</div>', unsafe_allow_html=True)
-            st.markdown(f'<div class="snapshot-field"><span class="snapshot-label">Assigned:</span> {assigned}</div>', unsafe_allow_html=True)
-            pref = lead.get("preference") or lead.get("ds_recommendation") or "—"
-            st.markdown(f'<div class="snapshot-field"><span class="snapshot-label">Care preference:</span> {pref}</div>', unsafe_allow_html=True)
-            st.markdown(f'<div class="snapshot-field"><span class="snapshot-label">Budget:</span> {"$"+format(int(budget),",")+"/mo" if budget else "—"}</div>', unsafe_allow_html=True)
-            st.markdown(f'<div class="snapshot-field"><span class="snapshot-label">Timeline:</span> {timeline}</div>', unsafe_allow_html=True)
-            notes = lead.get("notes") or "—"
-            st.markdown(f'<div class="snapshot-field"><span class="snapshot-label">Notes:</span> {notes}</div>', unsafe_allow_html=True)
+    with st.markdown('<div class="main-columns">', unsafe_allow_html=True):
+        left, right = st.columns([2.5, 2], gap="large")
+        with left:
+            for i, label in enumerate(STAGES):
+                with st.expander(label, expanded=(i == active_idx)):
+                    st.markdown(f'<div class="expander{" expander-active" if i == active_idx else ""}">', unsafe_allow_html=True)
+                    st.checkbox("Mark complete", key=f"step_{i}", value=steps[i])
+                    st.markdown('</div>', unsafe_allow_html=True)
+        with right:
+            with st.markdown('<div class="case-snapshot">', unsafe_allow_html=True):
+                st.subheader("Case snapshot")
+                st.markdown(f'<div class="snapshot-field"><span class="snapshot-label">Client:</span> {name} • {city}</div>', unsafe_allow_html=True)
+                st.markdown(f'<div class="snapshot-field"><span class="snapshot-label">Assigned:</span> {assigned}</div>', unsafe_allow_html=True)
+                pref = lead.get("preference") or lead.get("ds_recommendation") or "—"
+                st.markdown(f'<div class="snapshot-field"><span class="snapshot-label">Care preference:</span> {pref}</div>', unsafe_allow_html=True)
+                st.markdown(f'<div class="snapshot-field"><span class="snapshot-label">Budget:</span> {"$"+format(int(budget),",")+"/mo" if budget else "—"}</div>', unsafe_allow_html=True)
+                st.markdown(f'<div class="snapshot-field"><span class="snapshot-label">Timeline:</span> {timeline}</div>', unsafe_allow_html=True)
+                notes = lead.get("notes") or "—"
+                st.markdown(f'<div class="snapshot-field"><span class="snapshot-label">Notes:</span> {notes}</div>', unsafe_allow_html=True)
 
 # Footer actions
 with st.container():
