@@ -1,55 +1,53 @@
-
 # pages/06_Reporting.py
+from __future__ import annotations
 import streamlit as st
+
+# --- Safe page-config: do not call st.set_page_config here directly ---
 try:
+    # Your helper should call st.set_page_config once and early
     from ui_chrome import apply_chrome
     apply_chrome()
 except Exception:
-    pass
+    # Fallback guard so we don't double-call in this run
+    KEY = "_page_config_applied"
+    if not st.session_state.get(KEY):
+        try:
+            st.set_page_config(page_title="Reporting", page_icon="📊", layout="wide")
+        except Exception:
+            pass
+        st.session_state[KEY] = True
 
-st.set_page_config(page_title="Reporting", page_icon="📊", layout="wide")
-
+# --- Page UI ---
 st.title("Reporting")
 
+st.caption("Pick a sample report to preview the kinds of views we’ll support.")
 report = st.selectbox(
-    "Select a report",
-    ["Monthly Aggregate", "Referral Sources", "Advisor Efficiency"],
+    "Choose a report",
+    ["Monthly aggregate", "Referral source", "Advisor efficiency"],
     index=0,
-    key="reporting_select",
+    key="reporting_selector",
 )
 
-st.divider()
+if report == "Monthly aggregate":
+    st.subheader("Monthly aggregate (mock)")
+    st.write("KPIs by month (leads, assignments, consultations, placements, conversion).")
+    st.bar_chart(
+        {"Leads": [26, 31, 28, 35], "Consultations": [14, 17, 15, 19], "Placements": [6, 7, 8, 9]}
+    )
 
-if report == "Monthly Aggregate":
-    c1, c2, c3, c4 = st.columns(4)
-    with c1: st.metric("New leads (month)", 126, "+8%")
-    with c2: st.metric("Qualified", "62", "+3")
-    with c3: st.metric("Placements", "31", "+2")
-    with c4: st.metric("Conversion rate", "24.6%", "+0.7pp")
+elif report == "Referral source":
+    st.subheader("Referral source (mock)")
+    st.write("Breakdown of lead volume and conversion by source.")
+    st.bar_chart({"Hospitals": [12], "Attorneys": [8], "Web": [20], "Other": [6]})
 
-    st.subheader("By week")
-    st.dataframe({
-        "Week": ["W1", "W2", "W3", "W4"],
-        "Leads": [28, 31, 34, 33],
-        "Qualified": [13, 16, 18, 15],
-        "Placements": [6, 7, 9, 9],
-    }, use_container_width=True)
-
-elif report == "Referral Sources":
-    st.caption("Top referral sources this month (mock)")
-    st.dataframe({
-        "Source": ["Hospital A", "Hospital B", "Home Health C", "Website", "Friend/Family"],
-        "Leads": [22, 17, 14, 38, 35],
-        "Qualified": [14, 10, 8, 18, 12],
-        "Placements": [7, 5, 4, 9, 6],
-    }, use_container_width=True)
-
-elif report == "Advisor Efficiency":
-    st.caption("Time-to-first-contact and placement conversion by advisor (mock)")
-    st.dataframe({
-        "Advisor": ["Kelsey Jochum", "Jennifer James", "Jenny Krzemien", "Chanda Hickman"],
-        "Avg. time to 1st contact": ["1.4h", "2.1h", "1.8h", "2.7h"],
-        "Leads this month": [32, 27, 29, 24],
-        "Placements": [12, 10, 9, 7],
-        "Conversion": ["37.5%", "37.0%", "31.0%", "29.2%"],
-    }, use_container_width=True)
+else:  # Advisor efficiency
+    st.subheader("Advisor efficiency (mock)")
+    st.write("Time-to-first-contact, time-to-consultation, and placement rate by advisor.")
+    st.dataframe(
+        {
+            "Advisor": ["Kelsey", "Chanda", "Jenny", "Jennifer"],
+            "Time to first contact (hrs)": [1.6, 2.2, 1.1, 2.9],
+            "Time to consultation (days)": [1.9, 2.5, 1.7, 2.8],
+            "Placement rate": ["28%", "24%", "31%", "26%"],
+        }
+    )
