@@ -107,7 +107,7 @@ with c2:
 with c3:
     st.caption("Budget / mo")
     budget = lead.get("budget", 0) or 0
-    st.write(f\"{int(budget):,}" if budget else "—")
+    st.write(f"{int(budget):,}" if budget else "—")
 with c4:
     st.caption("Timeline")
     st.write(lead.get("timeline","—"))
