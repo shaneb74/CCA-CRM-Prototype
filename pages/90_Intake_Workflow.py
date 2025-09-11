@@ -5,9 +5,9 @@ from __future__ import annotations
 import datetime as dt
 import streamlit as st
 
-import store  # uses: init(), get_selected_lead_id(), get_lead(), set_selected_lead(), get_progress()
+import store  # uses: init(), get_selected_lead_id(), get_lead()
 
-# --- safe page config (avoid multiple set_page_config crashes) ---
+# --- safe page config ---
 try:
     st.set_page_config(page_title="Intake Workflow", page_icon="🧭", layout="wide")
 except Exception:
@@ -29,16 +29,12 @@ STAGES: list[str] = [
 ]
 
 def _steps_state_for_lead(lead_id: str) -> list[bool]:
-    """
-    We keep per-lead intake steps in st.session_state.case_steps[lead_id] as a list of bools,
-    one per STAGES entry. If missing, initialize with first step done (received).
-    """
+    """Per-lead intake steps stored in session_state."""
     st.session_state.setdefault("case_steps", {})
     steps = st.session_state["case_steps"].get(lead_id)
     if not steps or len(steps) != len(STAGES):
         steps = [False] * len(STAGES)
-        # If lead exists in system, mark "Lead received" True by default.
-        steps[0] = True
+        steps[0] = True  # default: received
         st.session_state["case_steps"][lead_id] = steps
     return steps
 
@@ -51,64 +47,49 @@ def _active_index(steps: list[bool]) -> int:
 
 def _progress_percent(steps: list[bool]) -> float:
     done = sum(1 for x in steps if x)
-    return max(0.0, min(1.0, done / float(len(steps))))
+    return max(0.0, min(1.0, done / float(len(STAGES))))
 
 def _sla_for_stage(idx: int, received_at: dt.datetime | None) -> tuple[str, str, str]:
-    """
-    Very light SLA text for banner: (next_label, status_emoji, due_str)
-    Uses the spec you provided; times are illustrative.
-    """
-    # map simple SLAs (hours/days) to each stage
     SLA_RULES = {
-        1: dt.timedelta(hours=8),     # Lead assigned within same business day
-        2: dt.timedelta(hours=2),     # Initial attempt within 2 business hours
-        3: dt.timedelta(days=2),      # Initial contact made -> schedule within 2 days
-        4: dt.timedelta(days=2),      # Consultation scheduled within 2 days of contact
-        5: dt.timedelta(days=3),      # Assessment started within 3 business days
-        6: dt.timedelta(days=5),      # Assessment completed within 5 business days of consult
-        7: dt.timedelta(hours=0),     # Decision — no SLA here in prototype
+        1: dt.timedelta(hours=8),
+        2: dt.timedelta(hours=2),
+        3: dt.timedelta(days=2),
+        4: dt.timedelta(days=2),
+        5: dt.timedelta(days=3),
+        6: dt.timedelta(days=5),
+        7: dt.timedelta(hours=0),
     }
     next_idx = min(idx, len(STAGES)-1)
     label = STAGES[next_idx]
     base = received_at or dt.datetime.utcnow()
     due = base + SLA_RULES.get(next_idx, dt.timedelta(days=2))
-    # Simple on-track indicator (real impl would compare now to due & stage start time)
     status = "✅ On track"
     return label, status, due.strftime("%Y-%m-%d %H:%M UTC")
-
-def _chip(label: str, state: str):
-    """
-    Render a rectangular chip with state:
-      state in {"active", "done", "future"}
-    """
-    CSS = """
-    <style>
-    .chip-row{display:flex;gap:.75rem;flex-wrap:wrap}
-    .chip{padding:.35rem .7rem;border-radius:.5rem;border:1px solid var(--border,#e5e7eb);
-          background: var(--bg,#fff); color: var(--fg,#6b7280); font-size:.85rem;}
-    .chip.done{--bg:#f9fafb; --border:#d1d5db; --fg:#6b7280}
-    .chip.active{--bg:#e8f1ff; --border:#2563eb; --fg:#1f2937; box-shadow:0 0 0 2px rgba(37,99,235,.15) inset}
-    </style>
-    """
-    classes = "chip " + state
-    st.markdown(CSS, unsafe_allow_html=True)
-    st.markdown(f'<div class="{classes}">{label}</div>', unsafe_allow_html=True)
-
-def _two_col() -> tuple:
-    # Keep your original proportions so Case snapshot sits to the right
-    return st.columns([3, 2], gap="large")
 
 def _pill(label: str, value: str):
     st.markdown(
         f"""
         <div style="
             display:inline-block;padding:.55rem .9rem;border-radius:.5rem;
-            background:#f3f4f6;color:#111827;font-size:.875rem;border:1px solid #e5e7eb;">
+            background:#f3f4f6;color:#111827;font-size:.875rem;border:1px solid #e5e7eb;
+            margin-right:.5rem;">
             <strong style="color:#6b7280">{label}:</strong> {value}
         </div>
         """,
         unsafe_allow_html=True,
     )
+
+# --- CSS for chips ---
+st.markdown("""
+<style>
+.chip-row{display:flex;gap:.75rem;flex-wrap:wrap;margin:.5rem 0}
+.chip{padding:.35rem .7rem;border-radius:.5rem;border:1px solid #e5e7eb;
+      background:#fafafa;color:#6b7280;font-size:.85rem;}
+.chip.done{background:#f9fafb;border-color:#d1d5db;color:#6b7280}
+.chip.active{background:#e8f1ff;border-color:#2563eb;color:#1f2937;
+             font-weight:600;box-shadow:0 0 0 2px rgba(37,99,235,.15) inset}
+</style>
+""", unsafe_allow_html=True)
 
 # ---------- page data ----------
 
@@ -129,8 +110,8 @@ timeline = lead.get("timeline", "—")
 assigned = lead.get("assigned_to") or "Unassigned"
 origin = str(lead.get("origin","")).lower() or "app"
 
-# Header row (kept)
-top = st.columns([2,1,1,1,1])
+# Header row
+top = st.columns([2,1,1,1])
 with top[0]:
     st.subheader(f"{name} • {city}")
     st.caption(f"Assigned: {assigned}")
@@ -143,11 +124,9 @@ with top[2]:
 with top[3]:
     st.caption("Timeline")
     st.write(timeline)
-with top[4]:
-    st.caption("")  # spacer
 
-# Origin / Received pills (kept)
-pcols = st.columns([1,1,6])
+# Origin / Received pills
+pcols = st.columns([1,1,5])
 with pcols[0]:
     _pill("Origin", origin)
 with pcols[1]:
@@ -157,37 +136,27 @@ with pcols[1]:
 steps = _steps_state_for_lead(lead_id)
 active_idx = _active_index(steps)
 
-# Horizontal chips row (kept; add highlight)
-st.write("")  # tiny spacer
-st.markdown('<div class="chip-row">', unsafe_allow_html=True)
+# Horizontal chips row
+chip_html = ['<div class="chip-row">']
 for i, label in enumerate(STAGES):
-    state = "active" if i == active_idx else ("done" if steps[i] and i < active_idx else "done" if steps[i] else "future")
-    _chip(label, state)
-st.markdown('</div>', unsafe_allow_html=True)
+    state = "active" if i == active_idx else ("done" if steps[i] and i < active_idx else "future")
+    chip_html.append(f'<div class="chip {state}">{label}</div>')
+chip_html.append('</div>')
+st.markdown("".join(chip_html), unsafe_allow_html=True)
 
-# SLA banner + progress (kept)
+# SLA banner + progress
 next_label, next_status, due_str = _sla_for_stage(max(active_idx, 1), dt.datetime.utcnow())
 st.markdown(f"**Next action:** {next_label} · {next_status} · **Due:** {due_str}")
 st.progress(_progress_percent(steps))
 
-# ---------- Body: left drawers + right Case snapshot (kept) ----------
+# ---------- Body: left drawers + right Case snapshot ----------
 
-left, right = _two_col()
+left, right = st.columns([3,2], gap="large")
 
 with left:
-    # Build each expander; auto-open the active one
     for i, label in enumerate(STAGES):
         with st.expander(label, expanded=(i == active_idx)):
-            if i == 1:
-                # Example minimal content for "Lead assigned"
-                c1, c2 = st.columns([1,2])
-                with c1:
-                    st.checkbox("Mark complete", key=f"step_{i}_done", value=steps[i])
-                with c2:
-                    st.caption("Assigned to")
-                    st.write(assigned)
-            else:
-                st.caption("")
+            st.checkbox("Mark complete", key=f"step_{i}", value=steps[i])
 
 with right:
     st.subheader("Case snapshot")
@@ -199,15 +168,13 @@ with right:
     notes = lead.get("notes") or "—"
     st.write(f"**Notes:** {notes}")
 
-# ---------- Footer actions (kept) ----------
+# ---------- Footer actions ----------
 
 f1, f2 = st.columns([1,1])
 with f1:
     if st.button("Complete Intake → Start Placement", type="primary"):
-        # Mark all steps complete for demo
         steps[:] = [True] * len(STAGES)
         st.session_state["case_steps"][lead_id] = steps
-        # schedule redirect (no rerun here)
         st.session_state["_goto_page"] = "pages/91_Placement_Workflow.py"
 with f2:
     if st.button("← Back to Workflows"):
