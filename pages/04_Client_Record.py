@@ -1,4 +1,3 @@
-
 # pages/04_Client_Record.py
 # Case Overview (Client Record) — safe, standalone page
 
@@ -6,25 +5,60 @@ from __future__ import annotations
 import streamlit as st
 import datetime
 
-# -------- redirect hook (consumes previously scheduled nav) --------
-_dest = st.session_state.pop("_goto_page", None)
-if _dest:
-    try:
-        st.switch_page(_dest)
-    except Exception:
-        pass
-
 # Optional chrome tweaks; ignore if not present
 try:
-    from ui_chrome import hide_default
-    hide_default()
+    from ui_chrome import apply_chrome
+    apply_chrome()
 except Exception:
     pass
 
 import store
-from ui_chrome import apply_chrome
+
+# ---- NEW: intake progress helpers ----
+try:
+    from Workflows.Intake.intake_sla import stage_for_lead, percent_for_stage
+    from Workflows.Intake.ui_intake_progress import intake_progress_ui
+except Exception:
+    # if not present, we keep page working
+    stage_for_lead = percent_for_stage = intake_progress_ui = None
 
 # ---------- helpers ----------
+
+def _switch_page_hard(path: str):
+    """
+    Try to change pages using st.switch_page if present; otherwise set a
+    small breadcrumb in session_state and rerun (works on Streamlit Cloud).
+    """
+    try:
+        if hasattr(st, "switch_page"):
+            st.switch_page(path)
+        else:
+            st.session_state["_goto_page"] = path
+            st.rerun()
+    except Exception:
+        st.session_state["_goto_page"] = path
+        st.rerun()
+
+
+def _open_intake():
+    lead = st.session_state.get("_lead_obj")
+    if lead and lead.get("id"):
+        store.set_selected_lead(lead["id"])
+    # prefer 90_* if you've renamed; fallback to legacy 06_*
+    try_paths = [
+        "pages/90_Intake_Workflow.py",
+        "pages/06_Intake_Workflow.py",
+    ]
+    for p in try_paths:
+        _switch_page_hard(p)
+
+
+def _open_placement():
+    lead = st.session_state.get("_lead_obj")
+    if lead and lead.get("id"):
+        store.set_selected_lead(lead["id"])
+    _switch_page_hard("pages/91_Placement_Workflow.py")
+
 
 def _assign_to_me():
     lead = st.session_state.get("_lead_obj")
@@ -39,8 +73,8 @@ def _assign_to_me():
 
 
 # ---------- page ----------
-# (auto) 
-st.set_page_config(page_title="Case Overview", page_icon="📄", layout="wide")  # handled by ui_chrome.apply_chrome()
+
+st.set_page_config(page_title="Case Overview", page_icon="📄", layout="wide")
 store.init()
 
 st.title("Case Overview")
@@ -123,6 +157,17 @@ with c4:
     st.caption("Lead ID")
     st.write(lead.get("id","—"))
 
+# ---- NEW: small intake status indicator (non-invasive) ----
+try:
+    if stage_for_lead and percent_for_stage:
+        stage = stage_for_lead(lead)
+        pct = float(percent_for_stage(stage) or 0.0)
+        st.caption("Intake status")
+        st.progress(pct)
+        st.caption(f"{stage}")
+except Exception:
+    pass
+
 st.divider()
 
 # --------- Info + Next Steps ---------
@@ -145,6 +190,13 @@ with lc2:
     st.checkbox("Upload Disclosure", key="ns_disclosure", value=False)
     st.checkbox("Complete Intake", key="ns_intake", value=False)
 
+# ---- NEW: compact chip/stepper (optional) ----
+try:
+    if intake_progress_ui:
+        intake_progress_ui(lead, title="Intake progress", compact=True)
+except Exception:
+    pass
+
 st.divider()
 
 # --------- Decision Support + Actions ---------
@@ -156,7 +208,7 @@ cost_str = f"${int(dsc):,} / month" if isinstance(dsc, (int, float)) and dsc > 0
 st.write(f"**Recommended:** {dsr}")
 st.write(f"**Estimated cost:** {cost_str}")
 
-btns = st.columns([1,1,2,6])
+btns = st.columns([1,1,1,6])
 
 me = getattr(store, "CURRENT_USER", "Current Advisor")
 already_mine = (lead.get("assigned_to") == me)
@@ -169,26 +221,19 @@ with btns[0]:
         key="assign_to_me_btn",
     )
 
-# Use button return (no callback) to safely navigate without the rerun-in-callback warning
 with btns[1]:
-    if st.button("Start Intake", key="start_intake_btn", disabled=not already_mine):
-        if lead and lead.get("id"):
-            store.set_selected_lead(lead["id"])
-        try:
-            st.switch_page("pages/90_Intake_Workflow.py")
-        except Exception:
-            st.session_state["_goto_page"] = "pages/90_Intake_Workflow.py"
-            st.rerun()
+    st.button(
+        "Start Intake",
+        on_click=_open_intake,
+        disabled=not already_mine,   # must be assigned to active advisor
+        key="start_intake_btn",
+    )
 
 with btns[2]:
-    intake_done = bool(lead.get("intake_completed"))
-    if st.button("Open Placement Workflow", key="open_placement_btn", disabled=not intake_done):
+    if st.button("Open Placement Workflow", key="open_placement_btn"):
         if lead and lead.get("id"):
             store.set_selected_lead(lead["id"])
-        try:
-            st.switch_page("pages/91_Placement_Workflow.py")
-        except Exception:
-            st.session_state["_goto_page"] = "pages/91_Placement_Workflow.py"
-            st.rerun()
+        st.session_state["_goto_page"] = "pages/91_Placement_Workflow.py"
+        st.rerun()
 
 st.caption("After tours, log results here and the pipeline will advance automatically.")

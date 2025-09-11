@@ -1,50 +1,53 @@
-
 # pages/90_Intake_Workflow.py
+# Minimal-safe Intake page shell that preserves behavior and reliable navigation
+
 import streamlit as st
 import store
-from ui_chrome import apply_chrome
-apply_chrome()  # idempotent
 
-# Keep layout simple; do not alter app-wide styling
+try:
+    from ui_chrome import apply_chrome
+    apply_chrome()
+except Exception:
+    pass
+
+st.set_page_config(page_title="Intake Workflow", page_icon="🧭", layout="wide")
 store.init()
 
-st.title("Intake Workflow")
-
 lead_id = store.get_selected_lead_id()
-if not lead_id:
-    st.info("Select a client in Client Record first.")
+lead = store.get_lead(lead_id) if lead_id else None
+
+st.title("Intake Workflow")
+if not lead:
+    st.info("No client selected. Use Client Record or the Workflows hub.")
     st.stop()
 
-lead = store.get_lead(lead_id)
+st.caption(f"{lead.get('name','')} • {lead.get('city','')} • Assigned: {lead.get('assigned_to') or 'Unassigned'}")
 
-# Header (kept minimal to avoid design drift)
-st.caption(f"{lead.get('name','—')} • {lead.get('city','—')} • Assigned: {lead.get('assigned_to') or 'Unassigned'}")
-
-# Basic intake fields (non-destructive placeholders)
 with st.container(border=True):
     st.subheader("Client Details")
-    st.text_input("Full name", value=lead.get("name",""), key="intake_name")
-    st.text_input("Status", value=str(lead.get("status","")).title(), key="intake_status")
-    st.number_input("Budget / mo", value=int(lead.get("budget",0) or 0), step=100, key="intake_budget")
-    st.text_area("Notes", value=lead.get("notes",""), key="intake_notes", height=120)
+    c1, c2, c3 = st.columns([2,1,1])
+    with c1:
+        st.text_input("Full name", value=lead.get("name",""), key="intake_name", label_visibility="visible", disabled=True)
+    with c2:
+        st.text_input("Status", value=str(lead.get("status","")).replace("_"," ").title(), key="intake_status", disabled=True)
+    with c3:
+        st.number_input("Budget / mo", value=float(lead.get("budget",0)), step=100.0, key="intake_budget", disabled=True)
 
-# Completion -> marks intake as done and navigates to Placement
-if st.button("Complete Intake → Start Placement", type="primary", key="intake_complete_btn"):
+    st.text_area("Notes", value=lead.get("notes",""), key="intake_notes", height=120, disabled=True)
+
+# Primary action: mark intake complete and jump to Placement
+if st.button("Complete Intake → Start Placement", type="primary"):
     if lead and lead.get("id"):
-        # update minimal fields if changed (demo-friendly)
-        lead["name"] = st.session_state.get("intake_name", lead["name"])
-        lead["notes"] = st.session_state.get("intake_notes", lead.get("notes"))
-        try:
-            lead["budget"] = int(st.session_state.get("intake_budget", lead.get("budget", 0)) or 0)
-        except Exception:
-            pass
-        lead["intake_completed"] = True
-        store.upsert_lead(lead)
+        # persist the completion flag
+        l = store.get_lead(lead["id"])
+        if l is not None:
+            l["intake_complete"] = True
+            store.upsert_lead(l)
+        # schedule redirect
+        st.session_state["_goto_page"] = "pages/91_Placement_Workflow.py"
+        st.rerun()
 
-    st.session_state["_goto_page"] = "pages/91_Placement_Workflow.py"
-    st.rerun()
-
-# Back affordance (optional)
-if st.button("◀ Back to Workflows", key="back_to_wf"):
+# Back
+if st.button("↩ Back to Workflows"):
     st.session_state["_goto_page"] = "pages/89_Workflows.py"
     st.rerun()
