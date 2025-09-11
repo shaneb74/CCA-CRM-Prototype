@@ -1,52 +1,57 @@
-# Workflows/Intake/progress.py
+
 import streamlit as st
+from datetime import date
 
-MILESTONES = [
-    ("lead_received", "Lead received"),
-    ("lead_assigned", "Lead assigned"),
-    ("initial_contact_attempted", "Initial contact attempted"),
-    ("initial_contact_made", "Initial contact made"),
-    ("consultation_scheduled", "Consultation scheduled"),
-    ("assessment_started", "Assessment started"),
-    ("assessment_completed", "Assessment completed"),
-    ("qualified_decision", "Qualification decision"),
-]
+PILL_GAP_X = 10
+PILL_GAP_Y = 10
 
-def _get_state(lead_id: str):
-    st.session_state.setdefault('intake_status',{}).setdefault(lead_id,{})
-    return st.session_state['intake_status'][lead_id]
-
-def _pill_row(status: dict):
-    done = [label for key,label in MILESTONES if status.get(key)]
-    if not done:
-        st.progress(0.05)
-    else:
-        pct = len(done) / len(MILESTONES)
-        st.progress(pct)
-    # badges
-    for key,label in MILESTONES:
-        color = "green" if status.get(key) else "gray"
-        st.markdown(f"<span class='pill {color}'>{label}</span>", unsafe_allow_html=True)
-    st.markdown("<div class='pill-spacer'></div>", unsafe_allow_html=True)
-
-def ensure_css_spacing():
-    css = '''
+def _pill_style():
+    return f"""
     <style>
-      .pill {display:inline-block; font-size:12px; padding:4px 8px; margin-right:6px;
-             border-radius:999px; background:#f3f4f6; color:#374151;}
-      .pill.green { background:#d1fae5; color:#065f46; }
-      .pill.gray { background:#f3f4f6; color:#6b7280; }
-      .pill-spacer { height: 16px; }
-      .exp-row { margin-bottom: 8px; }
+      .cca-pill-row {{
+         display:flex; flex-wrap:wrap; gap:{PILL_GAP_X}px {PILL_GAP_Y}px; margin: 6px 0 14px 0;
+      }}
+      .cca-pill {{
+         display:inline-flex; align-items:center; gap:6px;
+         padding: 4px 10px; border-radius: 999px; font-size:12px; line-height:1;
+         border:1px solid #e5e7eb; background:#f9fafb; color:#374151;
+      }}
+      .cca-pill.done {{ background:#ecfdf5; border-color:#a7f3d0; color:#065f46; }}
+      .cca-pill.overdue {{ background:#fff7ed; border-color:#fed7aa; color:#9a3412; }}
+      .cca-pill.duetoday {{ background:#fffbeb; border-color:#fde68a; color:#92400e; }}
     </style>
-    '''
-    st.markdown(css, unsafe_allow_html=True)
+    """
 
-def show_intake_progress(lead_id: str):
-    status = _get_state(lead_id)
-    _pill_row(status)
+def _state_class(step):
+    if step.get("completed"):
+        return "done"
+    due = step.get("sla_due")
+    if isinstance(due, date):
+        today = date.today()
+        if due < today:
+            return "overdue"
+        if due == today:
+            return "duetoday"
+    return ""
 
-    # expandable sections (content TBD)
-    for key, label in MILESTONES:
-        with st.expander(label, expanded=False):
-            st.write("Tasks & notes coming soon.")
+def render_pills(steps: list[dict]):
+    st.markdown(_pill_style(), unsafe_allow_html=True)
+    html = ['<div class="cca-pill-row">']
+    for s in steps:
+        cls = _state_class(s)
+        label = s.get("label", "Step")
+        html.append(f'<div class="cca-pill {cls}">{label}</div>')
+    html.append("</div>")
+    st.markdown("".join(html), unsafe_allow_html=True)
+
+def progress_fraction(steps: list[dict]) -> float:
+    if not steps: 
+        return 0.0
+    done = sum(1 for s in steps if s.get("completed"))
+    return round(done / len(steps), 4)
+
+def first_incomplete_index(steps: list[dict]) -> int:
+    for idx, s in enumerate(steps):
+        if not s.get("completed"):
+            return idx
+    return 0
