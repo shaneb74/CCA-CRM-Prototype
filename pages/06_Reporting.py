@@ -1,53 +1,69 @@
 # pages/06_Reporting.py
+# Simple, table-first Reporting page (matches dev look)
+
 from __future__ import annotations
 import streamlit as st
 
-# --- Safe page-config: do not call st.set_page_config here directly ---
+# --- page chrome (safe: won't double-call set_page_config) ---
 try:
-    # Your helper should call st.set_page_config once and early
-    from ui_chrome import apply_chrome
+    from ui_chrome import apply_chrome  # your helper that safely sets wide + any CSS
     apply_chrome()
 except Exception:
-    # Fallback guard so we don't double-call in this run
-    KEY = "_page_config_applied"
-    if not st.session_state.get(KEY):
-        try:
-            st.set_page_config(page_title="Reporting", page_icon="📊", layout="wide")
-        except Exception:
-            pass
-        st.session_state[KEY] = True
+    # Fallback: only set once, as early as possible
+    try:
+        st.set_page_config(page_title="Reporting", page_icon="📊", layout="wide")
+    except Exception:
+        pass
 
-# --- Page UI ---
 st.title("Reporting")
 
 st.caption("Pick a sample report to preview the kinds of views we’ll support.")
-report = st.selectbox(
-    "Choose a report",
-    ["Monthly aggregate", "Referral source", "Advisor efficiency"],
-    index=0,
-    key="reporting_selector",
-)
 
-if report == "Monthly aggregate":
+# --- selector ---
+options = ["Referral Sources", "Monthly aggregate", "Agent efficiency"]
+report = st.selectbox("Choose a report", options=options, index=0, key="report_selector")
+
+st.write("")  # breathing room
+
+# ---- Helpers to render simple tables to match your dev look ----
+def _table_referral_sources():
+    st.subheader("Top referral sources this month (mock)")
+    data = [
+        {"Source": "Hospital A",  "Leads": 22, "Qualified": 14, "Placements": 7},
+        {"Source": "Hospital B",  "Leads": 17, "Qualified": 10, "Placements": 5},
+        {"Source": "Home Health C","Leads": 14, "Qualified":  8, "Placements": 4},
+        {"Source": "Website",     "Leads": 38, "Qualified": 18, "Placements": 9},
+        {"Source": "Friend/Family","Leads": 35, "Qualified": 12, "Placements": 6},
+    ]
+    st.table(data)
+
+def _table_monthly_aggregate():
     st.subheader("Monthly aggregate (mock)")
-    st.write("KPIs by month (leads, assignments, consultations, placements, conversion).")
-    st.bar_chart(
-        {"Leads": [26, 31, 28, 35], "Consultations": [14, 17, 15, 19], "Placements": [6, 7, 8, 9]}
-    )
+    st.caption("KPI rollups by month: leads, assignments, consultations, placements, conversion.")
+    data = [
+        {"Month": "Jan", "Leads": 48, "Assigned": 46, "Consultations": 31, "Placements": 12, "Conversion %": "25%"},
+        {"Month": "Feb", "Leads": 56, "Assigned": 53, "Consultations": 35, "Placements": 14, "Conversion %": "25%"},
+        {"Month": "Mar", "Leads": 50, "Assigned": 48, "Consultations": 33, "Placements": 11, "Conversion %": "22%"},
+        {"Month": "Apr", "Leads": 62, "Assigned": 59, "Consultations": 41, "Placements": 17, "Conversion %": "28%"},
+    ]
+    st.table(data)
 
-elif report == "Referral source":
-    st.subheader("Referral source (mock)")
-    st.write("Breakdown of lead volume and conversion by source.")
-    st.bar_chart({"Hospitals": [12], "Attorneys": [8], "Web": [20], "Other": [6]})
+def _table_agent_efficiency():
+    st.subheader("Agent efficiency (mock)")
+    st.caption("Per-advisor volume and cycle-time snapshots.")
+    data = [
+        {"Advisor": "Kelsey Jochum",   "Leads": 26, "Consultations": 19, "Placements": 9,  "Avg days to qualify": 4},
+        {"Advisor": "Jenny Krzemien",  "Leads": 24, "Consultations": 17, "Placements": 8,  "Avg days to qualify": 5},
+        {"Advisor": "Jennifer White",  "Leads": 21, "Consultations": 15, "Placements": 7,  "Avg days to qualify": 5},
+        {"Advisor": "Jennifer James",  "Leads": 18, "Consultations": 12, "Placements": 5,  "Avg days to qualify": 6},
+        {"Advisor": "Jesiah Irish",    "Leads": 20, "Consultations": 14, "Placements": 6,  "Avg days to qualify": 6},
+    ]
+    st.table(data)
 
-else:  # Advisor efficiency
-    st.subheader("Advisor efficiency (mock)")
-    st.write("Time-to-first-contact, time-to-consultation, and placement rate by advisor.")
-    st.dataframe(
-        {
-            "Advisor": ["Kelsey", "Chanda", "Jenny", "Jennifer"],
-            "Time to first contact (hrs)": [1.6, 2.2, 1.1, 2.9],
-            "Time to consultation (days)": [1.9, 2.5, 1.7, 2.8],
-            "Placement rate": ["28%", "24%", "31%", "26%"],
-        }
-    )
+# --- render selected ---
+if report == "Referral Sources":
+    _table_referral_sources()
+elif report == "Monthly aggregate":
+    _table_monthly_aggregate()
+else:
+    _table_agent_efficiency()
