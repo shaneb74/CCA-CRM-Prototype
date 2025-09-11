@@ -1,147 +1,132 @@
-
-# pages/90_Intake_Workflow.py
+# pages/90_Intake_Workflow.py — Intake Workflow (horizontal tracker + compact summary)
 from __future__ import annotations
 import streamlit as st
-from datetime import date, datetime
-import math
 
-# Safe imports
 try:
-    import store
+    from ui_chrome import apply_chrome
+    apply_chrome()
 except Exception:
-    store = None
+    pass
 
-# Local UI helpers for pills/progress
-try:
-    from Workflows.Intake.progress import render_pills, progress_fraction, first_incomplete_index
-except Exception:
-    # Fallback no-op to keep page from crashing if path differs
-    def render_pills(steps): 
-        st.write("Intake steps:", ", ".join(s.get("label","") for s in steps))
-    def progress_fraction(steps): 
-        return 0.0
-    def first_incomplete_index(steps): 
-        return 0
+import store
 
-# --- Page config (guard against duplicates) ---
-_once = "_cca_intake_pgconf"
-if not st.session_state.get(_once):
-    try:
-        st.set_page_config(page_title="Intake Workflow", page_icon="🧭", layout="wide")
-    except Exception:
-        pass
-    st.session_state[_once] = True
+st.set_page_config(page_title="Intake Workflow", page_icon="🧭", layout="wide")
+store.init()
 
-def _lead():
-    lead_id = None
-    if store:
-        lead_id = getattr(store, "get_selected_lead_id", lambda: None)()
-    if store and lead_id:
-        return store.get_lead(lead_id)
-    return None
-
-def _seed_steps(lead) -> list[dict]:
-    # Build standard steps. In a real app these would be persisted.
-    def step(label, key):
-        # attach persisted booleans if they exist in session
-        val = st.session_state.get(f"intake_{key}_{lead.get('id','')}", False)
-        return {
-            "label": label,
-            "key": key,
-            "completed": bool(val),
-            "sla_due": None,  # could be dates if you have them
-        }
-    return [
-        step("Lead received", "lead_received"),
-        step("Lead assigned", "lead_assigned"),
-        step("Initial contact attempted", "initial_attempt"),
-        step("Initial contact made", "contact_made"),
-        step("Consultation scheduled", "consult_scheduled"),
-        step("Assessment started", "assessment_started"),
-        step("Assessment completed", "assessment_completed"),
-        step("Qualification decision", "qualified"),
-    ]
-
-lead = _lead()
-if not lead:
-    st.info("No client selected. Use **Client Record** to pick a client, then return.")
+lead_id = store.get_selected_lead_id()
+if not lead_id:
+    st.info("No client selected. Use Client Record or the Workflows hub.")
     st.stop()
 
-# Sticky case summary
+lead = store.get_lead(lead_id) or {}
+name = lead.get("name","—")
+city = lead.get("city","—")
+status = str(lead.get("status","")).replace("_"," ")
+budget = lead.get("budget")
+timeline = lead.get("timeline","—")
+notes = lead.get("notes","").strip()
+
 st.title("Intake Workflow")
-sub = f"{lead.get('name','')} • {lead.get('city','')} • Assigned: {lead.get('assigned_to') or 'Unassigned'}"
-st.caption(sub)
-
-c1, c2, c3, c4 = st.columns([1,1,1,1])
-with c1:
+# --- Compact case summary row (matches your typography scale) ---
+hc1, hc2, hc3, hc4 = st.columns([2,1,1,2])
+with hc1:
+    st.markdown(f"**{name} • {city}**")
+with hc2:
     st.caption("Status")
-    st.write(str(lead.get("status","")).replace("_"," ").title() or "—")
-with c2:
+    st.write(status or "—")
+with hc3:
     st.caption("Budget / mo")
-    budget = lead.get("budget", 0) or 0
-    st.metric(label="", value=f"{int(budget):,}" if budget else "—")
-with c3:
+    st.write(f"{int(budget):,}" if isinstance(budget,(int,float)) and budget else "—")
+with hc4:
     st.caption("Timeline")
-    st.write(lead.get("timeline","—"))
-with c4:
-    st.caption("Notes")
-    st.write(lead.get("notes") or "—")
+    st.write(timeline or "—")
 
-st.divider()
+# --- Steps model (8 stages) ---
+STEPS = [
+    "Lead received",
+    "Lead assigned",
+    "Initial contact attempted",
+    "Initial contact made",
+    "Consultation scheduled",
+    "Assessment started",
+    "Assessment completed",
+    "Qualification decision",
+]
 
-# Steps + progress
-steps = _seed_steps(lead)
-pct = progress_fraction(steps)
+# Persist check states per lead across runs
+def _step_key(i:int)->str:
+    return f"intake_{lead_id}_{i}"
+
+# Compute counts from current session_state
+done_count = sum(1 for i in range(len(STEPS)) if st.session_state.get(_step_key(i), False))
+progress = 0.0 if len(STEPS)==0 else min(1.0, done_count/len(STEPS))
+current_idx = min(done_count, len(STEPS)-1)
+
+# --- Horizontal pills (CSS) + progress bar ---
+st.markdown('''
+<style>
+.cca-pillrow { display:grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap:8px; margin: 6px 0 12px 0; }
+.cca-pill {
+  border-radius: 999px; padding: 6px 10px; font-size: 12px;
+  border: 1px solid #e5e7eb; color:#6b7280; text-align:center; background:#fff;
+  white-space: nowrap; overflow:hidden; text-overflow: ellipsis;
+}
+.cca-pill.done { background:#eef6ff; color:#2563eb; border-color:#bfdbfe; font-weight:600; }
+.cca-pill.curr { border-color:#60a5fa; box-shadow: 0 0 0 2px rgba(59,130,246,0.15) inset; color:#1f2937; font-weight:600; }
+</style>
+''', unsafe_allow_html=True)
+
 st.caption("Intake progress")
-st.progress(min(max(pct,0.0),1.0))
-render_pills(steps)
+progress_bar = st.progress(progress)
 
-st.markdown(" ")  # breathing room
+# Pill row
+pill_html = '<div class="cca-pillrow">'
+for i, label in enumerate(STEPS):
+    cls = "cca-pill"
+    if i < done_count:
+        cls += " done"
+    elif i == current_idx:
+        cls += " curr"
+    pill_html += f'<div class="{cls}">{label}</div>'
+pill_html += "</div>"
+st.markdown(pill_html, unsafe_allow_html=True)
 
-# Grouped sections
-st.subheader("Contact & Scheduling", anchor=False)
-with st.expander("Lead received", expanded=False):
-    st.checkbox("Mark lead received", key=f"intake_lead_received_{lead.get('id','')}")
-with st.expander("Lead assigned", expanded=False):
-    st.checkbox("Mark lead assigned", key=f"intake_lead_assigned_{lead.get('id','')}")
-with st.expander("Initial contact attempted", expanded=False):
-    st.selectbox("Contact method", ["Phone","Email","SMS","Other"], key=f"intake_attempt_method_{lead.get('id','')}")
-    st.text_area("Notes", key=f"intake_attempt_notes_{lead.get('id','')}")
-    st.checkbox("Mark initial attempt complete", key=f"intake_initial_attempt_{lead.get('id','')}")
-with st.expander("Initial contact made", expanded=False):
-    st.date_input("Date contacted", key=f"intake_contact_date_{lead.get('id','')}", value=date.today())
-    st.text_area("Summary / outcome", key=f"intake_contact_notes_{lead.get('id','')}")
-    st.checkbox("Mark contact made", key=f"intake_contact_made_{lead.get('id','')}")
-with st.expander("Consultation scheduled", expanded=False):
-    st.date_input("Consultation date", key=f"intake_consult_dt_{lead.get('id','')}", value=date.today())
-    st.time_input("Consultation time", key=f"intake_consult_time_{lead.get('id','')}")
-    st.checkbox("Mark consultation scheduled", key=f"intake_consult_scheduled_{lead.get('id','')}")
+# --- Expanders (kept, but slimmer spacing) ---
+st.markdown("<div style='height:4px'></div>", unsafe_allow_html=True)
 
-st.subheader("Assessment", anchor=False)
-with st.expander("Assessment started", expanded=False):
-    st.text_input("Who provided information", placeholder="Resident, Daughter, POA, etc.", key=f"intake_assessor_{lead.get('id','')}")
-    st.checkbox("Mark assessment started", key=f"intake_assessment_started_{lead.get('id','')}")
-with st.expander("Assessment completed", expanded=False):
-    st.text_area("Assessment notes", key=f"intake_assess_notes_{lead.get('id','')}")
-    st.checkbox("Mark assessment completed", key=f"intake_assessment_completed_{lead.get('id','')}")
+def _expander(label:str, idx:int):
+    with st.expander(label, expanded=False):
+        st.checkbox("Mark step complete", key=_step_key(idx))
+        st.text_area("Notes", key=f"notes_{lead_id}_{idx}", height=80, placeholder="Add details…")
 
-st.subheader("Decision", anchor=False)
-with st.expander("Qualification decision", expanded=False):
-    st.selectbox("Outcome", ["Qualified","Deferred","Declined"], key=f"intake_qualified_outcome_{lead.get('id','')}")
-    st.text_area("Reason / comments", key=f"intake_qualified_reason_{lead.get('id','')}")
-    st.checkbox("Mark decision recorded", key=f"intake_qualified_{lead.get('id','')}")
+# Render grouped expanders
+for i, label in enumerate(STEPS):
+    _expander(label, i)
 
-st.markdown("")
-cols = st.columns([2,1])
-with cols[0]:
-    disabled = not all(s.get("completed") for s in _seed_steps(lead))
-    if st.button("Complete Intake → Start Placement", type="primary", disabled=disabled):
-        # Persist a simple flag in session to indicate 'intake complete'
-        st.session_state[f"intake_done_{lead.get('id','')}"] = True
-        # redirect (safe, no rerun inside callback)
-        st.session_state["_goto_page"] = "pages/91_Placement_Workflow.py"
-        st.experimental_rerun()
-with cols[1]:
-    if st.button("← Back to Workflows"):
-        st.session_state["_goto_page"] = "pages/89_Workflows.py"
-        st.experimental_rerun()
+st.markdown("<div style='height:8px'></div>", unsafe_allow_html=True)
+
+# --- Footer CTAs ---
+def _go_back():
+    st.session_state["_goto_page"] = "pages/89_Workflows.py"
+    try:
+        if hasattr(st, "switch_page"):
+            st.switch_page("pages/89_Workflows.py")
+    except Exception:
+        pass
+
+def _complete_and_go():
+    # Mark all steps complete if user explicitly completes intake
+    for i in range(len(STEPS)):
+        st.session_state[_step_key(i)] = True
+    st.session_state["_goto_page"] = "pages/91_Placement_Workflow.py"
+    try:
+        if hasattr(st, "switch_page"):
+            st.switch_page("pages/91_Placement_Workflow.py")
+    except Exception:
+        pass
+
+cta1, cta2 = st.columns([1,3])
+with cta1:
+    st.button("Complete Intake → Start Placement", type="primary", on_click=_complete_and_go)
+with cta2:
+    st.button("← Back to Workflows", on_click=_go_back)

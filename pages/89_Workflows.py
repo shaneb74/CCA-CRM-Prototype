@@ -1,9 +1,19 @@
-
-# pages/89_Workflows.py
+# pages/89_Workflows.py — Workflows hub (minimal edit: fix "Open Intake" CTA navigation)
+from __future__ import annotations
 import streamlit as st
+
+# Optional: consume pending redirect and set layout
+try:
+    from ui_chrome import apply_chrome
+    apply_chrome()
+except Exception:
+    pass
+
 import store
 
+st.set_page_config(page_title="Workflows", page_icon="🗂", layout="wide")
 store.init()
+
 st.title("Workflows")
 
 lead_id = store.get_selected_lead_id()
@@ -11,34 +21,40 @@ if not lead_id:
     st.info("Select a client in Client Record first.")
     st.stop()
 
-lead = store.get_lead(lead_id)
-st.caption(f"Client: {lead.get('name','—')} ({lead.get('id','—')}) • {lead.get('city','—')} • Assigned: {lead.get('assigned_to') or '—'}")
+lead = store.get_lead(lead_id) or {}
 
-intake_done = bool(lead.get("intake_completed"))
-
-st.subheader("Intake")
-st.write("Collect personal, care, financial, lifestyle.")
-if st.button("Open Intake →", key="open_intake_hub"):
+def _go_intake(lead_id: str):
+    if not lead_id:
+        return
+    store.set_selected_lead(lead_id)
     st.session_state["_goto_page"] = "pages/90_Intake_Workflow.py"
-    st.rerun()
+    try:
+        if hasattr(st, "switch_page"):
+            st.switch_page("pages/90_Intake_Workflow.py")
+    except Exception:
+        pass
 
-st.subheader("Placement")
-st.write("Shortlist communities, schedule tours, record outcomes.")
-st.button(
-    "Open Placement →",
-    key="open_place_hub",
-    disabled=not intake_done,
-    on_click=lambda: (
-        store.set_selected_lead(lead["id"]),
-        st.session_state.update(_goto_page="pages/91_Placement_Workflow.py"),
-        st.rerun()
-    ),
-)
-if not intake_done:
-    st.caption("Complete Intake first.")
+def _go_placement(lead_id: str):
+    if not lead_id:
+        return
+    store.set_selected_lead(lead_id)
+    st.session_state["_goto_page"] = "pages/91_Placement_Workflow.py"
+    try:
+        if hasattr(st, "switch_page"):
+            st.switch_page("pages/91_Placement_Workflow.py")
+    except Exception:
+        pass
 
-st.subheader("Follow-up")
-st.write("Post-placement check-ins and escalations.")
-if st.button("Open Follow-up →", key="open_follow_hub"):
-    st.session_state["_goto_page"] = "pages/92_Followup_Workflow.py"
-    st.rerun()
+c1, c2, c3 = st.columns(3)
+with c1:
+    st.subheader("Intake")
+    st.caption("Collect personal, care, financial, lifestyle.")
+    st.button("Open Intake →", key="open_intake_wf", on_click=_go_intake, args=(lead_id,))
+with c2:
+    st.subheader("Placement")
+    st.caption("Shortlist communities, schedule tours, record outcomes.")
+    st.button("Open Placement →", key="open_place_wf", on_click=_go_placement, args=(lead_id,))
+with c3:
+    st.subheader("Follow-up")
+    st.caption("Post-placement check-ins and escalations.")
+    st.write("Use the Follow-up page from the sidebar once placement is complete.")
