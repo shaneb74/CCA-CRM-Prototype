@@ -1,9 +1,9 @@
-
 # Workflows/Intake/progress.py
 from __future__ import annotations
 import streamlit as st
+from datetime import datetime
 
-# Ordered milestones
+# Ordered milestones (keys must be stable)
 MILESTONES = [
     ("lead_received",          "Lead received"),
     ("lead_assigned",          "Lead assigned"),
@@ -15,28 +15,54 @@ MILESTONES = [
     ("qualified",              "Qualified / decision"),
 ]
 
-def _key(lead_id: str) -> str:
+def _status_key(lead_id: str) -> str:
     return f"_intake_status::{lead_id}"
 
+def _data_key(lead_id: str) -> str:
+    return f"_intake_data::{lead_id}"
+
 def _ensure_state(lead_id: str):
-    key = _key(lead_id)
-    if key not in st.session_state:
-        st.session_state[key] = {k: False for k,_ in MILESTONES}
-        st.session_state[key]["lead_received"] = True
+    sk = _status_key(lead_id)
+    if sk not in st.session_state:
+        st.session_state[sk] = {k: False for k,_ in MILESTONES}
+        st.session_state[sk]["lead_received"] = True  # auto as soon as lead exists
+    dk = _data_key(lead_id)
+    if dk not in st.session_state:
+        st.session_state[dk] = {
+            "initial_contact_attempts": [],   # list of {ts, channel, notes}
+            "initial_contacts": [],           # list of {ts, channel, notes}
+            "consultations": [],              # list of {start_ts, medium, attendees}
+            "assessment_started": None,       # {ts, started_by}
+            "assessment_completed": None,     # {ts, completed_by, sections_done}
+            "qualification": None,            # {ts, outcome, reason}
+        }
 
 def set_step(lead_id: str, step_key: str, value: bool=True):
     _ensure_state(lead_id)
-    st.session_state[_key(lead_id)][step_key] = bool(value)
+    st.session_state[_status_key(lead_id)][step_key] = bool(value)
 
 def get_status(lead_id: str) -> dict:
     _ensure_state(lead_id)
-    return dict(st.session_state[_key(lead_id)])
+    return dict(st.session_state[_status_key(lead_id)])
+
+def get_data(lead_id: str) -> dict:
+    _ensure_state(lead_id)
+    return st.session_state[_data_key(lead_id)]
 
 def progress_fraction(lead_id: str) -> float:
     s = get_status(lead_id)
     total = len(MILESTONES)
     done = sum(1 for k,_ in MILESTONES if s.get(k))
     return max(0.0, min(1.0, done/total))
+
+# ---- Data-backed actions (prototype) ----
+
+def log_contact_attempt(lead_id: str, ts: datetime, channel: str, notes: str=""):
+    d = get_data(lead_id)
+    d["initial_contact_attempts"].append({"ts": ts.isoformat(), "channel": channel, "notes": notes.strip()})
+    set_step(lead_id, "initial_contact_attempt", True)
+
+# ---- Rendering helpers ----
 
 def _render_stepper(status: dict, compact: bool=False):
     size = "11px" if compact else "12px"
@@ -59,9 +85,7 @@ def _render_stepper(status: dict, compact: bool=False):
     st.markdown("".join(html), unsafe_allow_html=True)
 
 def show_intake_summary(lead: dict, title: str="Intake status"):
-    """Compact, read-only summary for Case Overview."""
-    if not lead:
-        return
+    if not lead: return
     lead_id = lead.get("id") or "UNKNOWN"
     _ensure_state(lead_id)
     s = get_status(lead_id)
@@ -71,11 +95,7 @@ def show_intake_summary(lead: dict, title: str="Intake status"):
     _render_stepper(s, compact=True)
 
 def show_intake_progress(lead: dict, title: str="Intake progress", show_demo_controls: bool=True):
-    """
-    Full widget for the Intake Workflow page. Optionally show demo controls.
-    """
-    if not lead:
-        return
+    if not lead: return
     lead_id = lead.get("id") or "UNKNOWN"
     _ensure_state(lead_id)
     s = get_status(lead_id)
@@ -84,8 +104,7 @@ def show_intake_progress(lead: dict, title: str="Intake progress", show_demo_con
     st.progress(pct)
     _render_stepper(s, compact=False)
 
-    if not show_demo_controls:
-        return
+    if not show_demo_controls: return
 
     with st.expander("Update milestones (demo controls)"):
         cols = st.columns(2)
