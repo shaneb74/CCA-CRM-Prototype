@@ -1,128 +1,126 @@
-
 # pages/90_Intake_Workflow.py
 from __future__ import annotations
+import datetime as _dt
 import streamlit as st
-from datetime import datetime
-import intake_store as ixs
+try:
+    from ui_chrome import apply_chrome
+    apply_chrome()
+except Exception:
+    try:
+        st.set_page_config(page_title="Intake Workflow", page_icon="🧭", layout="wide")
+    except Exception:
+        pass
 import store
-
-# ----- safe reroute consumer (works with/without ui_chrome) -----
-def _consume_redirect_once():
-    k = "_goto_page"
-    dest = st.session_state.pop(k, None)
-    if dest and hasattr(st, "switch_page"):
-        try:
-            st.switch_page(dest)
-        except Exception:
-            pass
-
-st.set_page_config(page_title="Intake Workflow", page_icon="🧭", layout="wide")
-_consume_redirect_once()
-
 store.init()
 lead_id = store.get_selected_lead_id()
 lead = store.get_lead(lead_id) if lead_id else None
-
 st.title("Intake Workflow")
-
 if not lead:
-    st.info("No client selected. Use Client Record or the Workflows hub.")
+    st.info("Select a client in **Client Record** first.")
     st.stop()
-
-# Ensure intake state & meta stored centrally
-ixs.init_for_lead(lead)
-meta = ixs.get_meta(lead["id"])
-
-# ---- Header snapshot (compact) ----
-snap_cols = st.columns([2,1,1,1])
-with snap_cols[0]:
-    st.markdown(f"**{lead.get('name','')}** • {lead.get('city','')}")
-    st.caption(f"Assigned: {lead.get('assigned_to') or 'Unassigned'}")
-with snap_cols[1]:
-    st.caption("Status")
-    st.write(lead.get("status","—"))
-with snap_cols[2]:
-    st.caption("Budget / mo")
-    val = lead.get("budget")
-    st.write(f"{val:,}" if isinstance(val,(int,float)) and val>0 else "—")
-with snap_cols[3]:
-    st.caption("Timeline")
-    st.write(lead.get("timeline","—"))
-
-# Origin + received
-o = meta.get("origin","Unknown")
-try:
-    ra = datetime.fromisoformat(meta.get("received_at"))
-except Exception:
-    ra = None
-
-top_info = st.columns([1,1,6])
-with top_info[0]:
-    st.info(f"Origin: {str(o)}")
-with top_info[1]:
-    st.info(f"Received: {ixs.human_when(ra) if ra else '—'}")
-
+name = lead.get("name","")
+city = lead.get("city","")
+assigned = lead.get("assigned_to") or "Unassigned"
+status = (lead.get("status","") or "").replace("_"," ")
+budget = lead.get("budget", 0)
+budget_str = f"{int(budget):,}" if isinstance(budget,(int,float)) and budget else "—"
+timeline = lead.get("timeline","—")
+notes = lead.get("notes")
+c1, c2, c3, c4 = st.columns([2,1,1,1])
+with c1:
+    st.caption(name + (" • " + city if city else ""))
+    st.caption(f"Assigned: {assigned}")
+with c2:
+    st.caption("Status"); st.write(status or "—")
+with c3:
+    st.caption("Budget / mo"); st.write(budget_str)
+with c4:
+    st.caption("Timeline"); st.write(timeline or "—")
 st.divider()
-
-# ---- Pills (horizontal) ----
-state = ixs.get_state(lead["id"])
-pill_cols = st.columns(8)
-for i, step in enumerate(ixs.STEP_ORDER):
-    label = ixs.STEP_LABELS[step]
-    with pill_cols[i]:
-        if state.get(step,{}).get("done"):
-            st.button(label, key=f"pill_{step}", disabled=True)
-        else:
-            st.button(label, key=f"pill_{step}", disabled=True)
-
-# Next action + SLA
-nxt, due, status = ixs.sla_status(lead["id"])
-if nxt:
-    badge = {"ok":"✅ On track","due_soon":"⏳ Due soon","overdue":"⚠️ Overdue"}[status]
-    due_str = due.strftime("%Y-%m-%d %H:%M UTC") if due else "—"
-    st.markdown(f"**Next action:** {ixs.STEP_LABELS[nxt]} • {badge} • **Due:** {due_str}")
-
-st.progress(ixs.percent_complete(lead["id"]))
-
+def _ns(key: str) -> str:
+    return f"{lead_id}:{key}"
+STEP_KEYS = [
+    ("Lead received",             "intake_lead_received"),
+    ("Lead assigned",             "intake_lead_assigned"),
+    ("Initial contact attempted", "intake_first_attempt"),
+    ("Initial contact made",      "intake_first_contact"),
+    ("Consultation scheduled",    "intake_consult_scheduled"),
+    ("Assessment started",        "intake_assessment_started"),
+    ("Assessment completed",      "intake_assessment_done"),
+    ("Qualification decision",    "intake_qualified"),
+]
+for _, k in STEP_KEYS:
+    st.session_state.setdefault(_ns(k), bool(st.session_state.get(k, False)))
+step_done = [bool(st.session_state.get(_ns(k), False)) for _, k in STEP_KEYS]
+done_upto   = max([i for i, d in enumerate(step_done) if d] or [-1])
+current_idx = (done_upto + 1) if done_upto + 1 < len(STEP_KEYS) else done_upto
+st.caption("Intake progress")
+st.markdown("""
+<style>
+.pillrow{display:flex;flex-wrap:wrap;gap:.5rem;margin:8px 0 12px 0}
+.pill{font-size:12px; line-height:20px; padding:6px 12px; border-radius:9999px;
+  border:1px solid #e5e7eb; background:#f3f4f6; color:#6b7280; user-select:none; white-space:nowrap;}
+.pill--done   { background:#e8f2ff; border-color:#93c5fd; color:#1d4ed8; }
+.pill--active { background:#dbeafe; border-color:#60a5fa; color:#1e40af; }
+.case-card{border:1px solid #e5e7eb; border-radius:12px; padding:12px 16px; background:#fff;}
+.muted{color:#6b7280; font-size:12px}
+</style>
+""", unsafe_allow_html=True)
+pills_html = ['<div class="pillrow">']
+for i, (label, _) in enumerate(STEP_KEYS):
+    cls = "pill"
+    if i <= done_upto: cls += " pill--done"
+    elif i == current_idx: cls += " pill--active"
+    pills_html.append(f'<div class="{cls}">{label}</div>')
+pills_html.append('</div>')
+st.markdown("".join(pills_html), unsafe_allow_html=True)
+completion = (done_upto + 1) / len(STEP_KEYS)
+st.progress(completion)
+def _sla_for_index(idx: int):
+    now = _dt.datetime.utcnow()
+    rules = {
+        0: ("Lead received", now),
+        1: ("Lead assigned", now + _dt.timedelta(hours=24)),
+        2: ("Initial contact attempted", now + _dt.timedelta(hours=2)),
+        3: ("Initial contact made", now + _dt.timedelta(days=2)),
+        4: ("Consultation scheduled", now + _dt.timedelta(days=2)),
+        5: ("Assessment started", now + _dt.timedelta(days=3)),
+        6: ("Assessment completed", now + _dt.timedelta(days=5)),
+        7: ("Qualification decision", now + _dt.timedelta(days=1)),
+    }
+    return rules.get(idx, ("", now))
+step_name, due_ts = _sla_for_index(current_idx if current_idx>=0 else 0)
+if step_name:
+    st.markdown(f"**Next action:** {step_name} — ✅ On track • **Due:** {due_ts.strftime('%Y-%m-%d %H:%M UTC')}")
 st.write("")
-
-# ---- Two-column content: drawers (left) + case snapshot (right) ----
-left, right = st.columns([3,2], gap="large")
-
-with left:
-    # No drawer for lead_received (info is shown above)
-    for step in ixs.STEP_ORDER:
-        if step == "lead_received":
-            continue
-        label = ixs.STEP_LABELS[step]
-        with st.expander(label, expanded=False):
-            # Basic "done" toggle
-            done = state.get(step,{}).get("done", False)
-            new_done = st.checkbox("Mark as complete", value=done, key=f"chk_{step}")
-            if new_done and not done:
-                ixs.mark_step(lead["id"], step, True)
-                st.success("Saved")
-                st.experimental_rerun()
-            # Simple notes field per step (kept in session for demo)
-            notes_key = f"notes::{lead['id']}::{step}"
-            st.text_area("Notes (optional)", key=notes_key)
-
-    st.write("")
+lc, rc = st.columns([2,1])
+auto_key = _ns("intake_auto_focus_drawer")
+if auto_key not in st.session_state: st.session_state[auto_key] = True
+def _user_interacted():
+    st.session_state[auto_key] = False
+with lc:
+    for i, (label, key) in enumerate(STEP_KEYS):
+        expanded_now = (st.session_state[auto_key] and i == current_idx)
+        with st.expander(label, expanded=expanded_now):
+            st.checkbox("Mark complete", key=_ns(key), on_change=_user_interacted)
+            st.text_area("Notes (optional)", key=_ns(key+":notes"), height=80)
+with rc:
+    st.markdown("#### Case snapshot")
+    st.markdown(f"<div class='case-card'><div class='muted'>{name} • {city}</div>"
+                f"<div><span class='muted'>Care preference:</span> {lead.get('preference','—')}</div>"
+                f"<div><span class='muted'>Budget:</span> ${budget_str}/mo</div>"
+                f"<div><span class='muted'>Timeline:</span> {timeline}</div>"
+                f"<div><span class='muted'>Notes:</span> {notes or '—'}</div>"
+                f"</div>", unsafe_allow_html=True)
+st.write("")
+cta1, cta2 = st.columns([1,3])
+with cta1:
     if st.button("Complete Intake → Start Placement", type="primary"):
-        ixs.mark_step(lead["id"], "qualification_decision", True)
+        for _, k in STEP_KEYS:
+            st.session_state[_ns(k)] = True
         st.session_state["_goto_page"] = "pages/91_Placement_Workflow.py"
         st.experimental_rerun()
-
-    st.button("← Back to Workflows", on_click=lambda: st.session_state.update({"_goto_page":"pages/89_Workflows.py"}))
-
-with right:
-    st.subheader("Case snapshot")
-    st.caption(f"{lead.get('name','')} • {lead.get('city','')} • Assigned: {lead.get('assigned_to') or 'Unassigned'}")
-    if lead.get("preference"):
-        st.write(f"**Care preference:** {lead['preference']}")
-    if lead.get("budget"):
-        st.write(f"**Budget:** ${int(lead['budget']):,}/mo")
-    if lead.get("timeline"):
-        st.write(f"**Timeline:** {lead['timeline']}")
-    if lead.get("notes"):
-        st.write(f"**Notes:** {lead['notes']}")
+with cta2:
+    if st.button("← Back to Workflows"):
+        st.session_state["_goto_page"] = "pages/89_Workflows.py"
+        st.experimental_rerun()
