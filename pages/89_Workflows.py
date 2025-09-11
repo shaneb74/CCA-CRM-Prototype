@@ -2,8 +2,6 @@
 # pages/89_Workflows.py
 import streamlit as st
 import store
-from ui_chrome import apply_chrome
-apply_chrome()  # idempotent
 
 store.init()
 st.title("Workflows")

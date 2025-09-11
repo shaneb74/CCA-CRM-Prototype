@@ -1,11 +1,8 @@
 # Workflows/Intake/progress.py
-# Visual intake progress indicator + tiny state manager (session-only)
-
 from __future__ import annotations
 import streamlit as st
-from datetime import datetime
 
-# ---- ordered milestones we want to display ----
+# Ordered milestones
 MILESTONES = [
     ("lead_received",          "Lead received"),
     ("lead_assigned",          "Lead assigned"),
@@ -21,11 +18,9 @@ def _key(lead_id: str) -> str:
     return f"_intake_status::{lead_id}"
 
 def _ensure_state(lead_id: str):
-    """Bootstrap a status dict for this lead if not present."""
     key = _key(lead_id)
     if key not in st.session_state:
         st.session_state[key] = {k: False for k,_ in MILESTONES}
-        # assume the lead exists => mark 'lead_received' as True by default
         st.session_state[key]["lead_received"] = True
 
 def set_step(lead_id: str, step_key: str, value: bool=True):
@@ -43,7 +38,6 @@ def progress_fraction(lead_id: str) -> float:
     return max(0.0, min(1.0, done/total))
 
 def _render_stepper(status: dict):
-    # simple horizontal stepper with pills
     css = """
     <style>
       .stepper{display:flex;gap:.5rem;flex-wrap:wrap;margin:.5rem 0 0;}
@@ -61,51 +55,29 @@ def _render_stepper(status: dict):
     html.append("</div>")
     st.markdown("".join(html), unsafe_allow_html=True)
 
-def show_intake_progress(lead: dict):
-    """
-    Drop-in UI. Call this near the top of Case Overview.
-    It displays a progress bar + stepper and small quick actions (optional).
-    """
+def show_intake_progress(lead: dict, title: str="Intake progress"):
     if not lead:
         return
     lead_id = lead.get("id") or "UNKNOWN"
     _ensure_state(lead_id)
-
     s = get_status(lead_id)
-    pct = int(progress_fraction(lead_id) * 100)
+    pct = progress_fraction(lead_id)
 
-    st.subheader("Intake progress")
-    st.progress(pct/100)
+    st.subheader(title)
+    st.progress(pct)
 
-    # Step pills
     _render_stepper(s)
 
-    # Optional quick toggles (safe for demo; remove if not desired)
     with st.expander("Update milestones (demo controls)"):
         cols = st.columns(2)
-        left_keys = [k for i,(k,_) in enumerate(MILESTONES) if i%2==0]
-        right_keys = [k for i,(k,_) in enumerate(MILESTONES) if i%2==1]
-        with cols[0]:
-            for k,_ in [m for m in MILESTONES if m[0] in left_keys]:
-                v = st.checkbox(k.replace("_"," ").title(), value=s.get(k,False), key=f"ck_{lead_id}_{k}")
-                if v != s.get(k):
-                    set_step(lead_id, k, v)
+        left = [m for i,m in enumerate(MILESTONES) if i%2==0]
+        right = [m for i,m in enumerate(MILESTONES) if i%2==1]
+        for k,label in left:
+            v = st.checkbox(label, value=s.get(k,False), key=f"ck_{lead_id}_{k}")
+            if v != s.get(k):
+                set_step(lead_id, k, v)
         with cols[1]:
-            for k,_ in [m for m in MILESTONES if m[0] in right_keys]:
-                v = st.checkbox(k.replace("_"," ").title(), value=s.get(k,False), key=f"ck_{lead_id}_{k}")
+            for k,label in right:
+                v = st.checkbox(label, value=s.get(k,False), key=f"ck_{lead_id}_{k}")
                 if v != s.get(k):
                     set_step(lead_id, k, v)
-
-        if st.button("Mark assessment complete", key=f"btn_ac_{lead_id}"):
-            set_step(lead_id, "assessment_started", True)
-            set_step(lead_id, "assessment_completed", True)
-            st.success("Assessment marked complete.")
-
-    # Compact SLA helper text
-    with st.expander("SLA cheat sheet", expanded=False):
-        st.markdown(
-            "- **Lead Received → Contact Attempt**: within **2 business hours**\n"
-            "- **Contact Made → Consultation Scheduled**: within **2 days**\n"
-            "- **Consultation → Assessment Started**: within **3 business days**\n"
-            "- **Assessment Completed**: within **5 business days**"
-        )

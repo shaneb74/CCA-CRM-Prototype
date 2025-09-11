@@ -2,8 +2,6 @@
 import streamlit as st
 from datetime import date, timedelta
 import store
-from ui_chrome import apply_chrome
-apply_chrome()  # idempotent
 
 # Safe init
 store.init()

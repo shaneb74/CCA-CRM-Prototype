@@ -1,71 +1,47 @@
 import streamlit as st
 
-# --- one-time guard for page_config across the whole app ---
-def _guard_page_config():
-    """
-    Monkey-patch st.set_page_config so only the FIRST call in a run does real work.
-    Subsequent calls become harmless no-ops. This prevents StreamlitAPIException
-    when pages accidentally call st.set_page_config more than once.
-    """
-    if getattr(st, "_cca_pgcfg_guarded", False):
+# --- single-run guards ---
+def _once_key()->str:
+    return "_page_config_applied"
+
+def _safe_set_page_config():
+    if st.session_state.get(_once_key()):
         return
-
-    # Keep the original (in case we ever need it)
-    if not hasattr(st, "_cca_orig_set_page_config"):
-        st._cca_orig_set_page_config = st.set_page_config
-
-    def _first_only(*args, **kwargs):
-        # If already applied once, ignore further calls
-        if getattr(st, "_cca_pgcfg_applied", False):
-            return None
-        # Call the real thing once
-        st._cca_orig_set_page_config(*args, **kwargs)
-        st._cca_pgcfg_applied = True
-        return None
-
-    st.set_page_config = _first_only
-    st._cca_pgcfg_guarded = True
-
-
-def _apply_base_config():
-    """
-    Set app-wide defaults for title/icon/layout ONCE (safe to call on every page).
-    """
     try:
-        st.set_page_config(
-            page_title="CCA CRM Prototype",
-            page_icon="📋",
-            layout="wide",
-        )
+        st.set_page_config(page_title="CCA CRM Prototype", page_icon="📋", layout="wide")
     except Exception:
-        # With our guard in place, exceptions are unlikely, but be defensive.
+        # Already set elsewhere in the same run — ignore
         pass
-
+    st.session_state[_once_key()] = True
 
 def _consume_redirect():
-    """
-    If a previous button scheduled a redirect (via st.session_state['_goto_page']),
-    perform it exactly once at the top of a run.
-    """
+    """If a previous click asked us to go somewhere, do it once at start of run."""
     dest = st.session_state.pop("_goto_page", None)
     if not dest:
         return
     try:
         if hasattr(st, "switch_page"):
             st.switch_page(dest)
+            return
     except Exception:
-        # If switch_page isn't available, we fail silently; links from hubs still work.
         pass
+    # Fallback: do nothing (Cloud rerun will keep state; links still work from hub).
 
+def _decorate_sidebar_workflows():
+    # Visually group 90/91/92 workflow pages under a divider + label
+    css = """
+    <style>
+    section[data-testid="stSidebar"] a[data-testid="stSidebarNavLink"][href*="pages/90_"]{
+      margin-top:14px; padding-top:12px; border-top:1px solid #e5e7eb;
+    }
+    section[data-testid="stSidebar"] a[data-testid="stSidebarNavLink"][href*="pages/90_"]::before{
+      content:"Workflows"; display:block; font-size:12px; color:#6b7280; margin-bottom:6px;
+    }
+    </style>
+    """
+    st.markdown(css, unsafe_allow_html=True)
 
 def apply_chrome():
-    """
-    Call this at the TOP of every page, before rendering any UI.
-    It:
-      1) Installs the page_config guard (prevents duplicate calls from blowing up)
-      2) Applies the base page config (title/icon/layout) once per run
-      3) Consumes any pending redirect
-    """
-    _guard_page_config()
-    _apply_base_config()
+    _safe_set_page_config()
     _consume_redirect()
+    _decorate_sidebar_workflows()

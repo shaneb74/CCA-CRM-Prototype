@@ -1,8 +1,6 @@
 # 03_Notifications.py — prettier alerts
 import streamlit as st, store
 from datetime import date, timedelta
-from ui_chrome import apply_chrome
-apply_chrome()  # idempotent
 store.init()
 def segmented(label, options, default):
     if hasattr(st, "segmented_control"):
