@@ -1,50 +1,19 @@
-
-# pages/04_Client_Record.py
-# Case Overview (Client Record) — safe, standalone page
-
 from __future__ import annotations
 import streamlit as st
 import datetime
-
-# -------- redirect hook (consumes previously scheduled nav) --------
-_dest = st.session_state.pop("_goto_page", None)
-if _dest:
-    try:
-        st.switch_page(_dest)
-    except Exception:
-        pass
-
-# Optional chrome tweaks; ignore if not present
-try:
-    from ui_chrome import hide_default
-    hide_default()
-except Exception:
-    pass
-
 import store
 
-# ---------- helpers ----------
-
-def _assign_to_me():
-    lead = st.session_state.get("_lead_obj")
-    if not lead:
-        return
-    me = getattr(store, "CURRENT_USER", "Current Advisor")
-    if lead.get("assigned_to") != me:
-        lead["assigned_to"] = me
-        store.upsert_lead(lead)
-        st.success(f"Assigned to {me}")
-        st.rerun()
-
-
-# ---------- page ----------
+try:
+    from ui_chrome import apply_chrome
+    apply_chrome()
+except Exception:
+    pass
 
 st.set_page_config(page_title="Case Overview", page_icon="📄", layout="wide")
 store.init()
 
 st.title("Case Overview")
 
-# -------- top filters --------
 leads = store.get_leads()
 advisors = sorted({l.get("assigned_to") for l in leads if l.get("assigned_to")}) or ["Unassigned"]
 advisor_filter = st.selectbox(
@@ -53,13 +22,11 @@ advisor_filter = st.selectbox(
     index=0,
     key="client_record_filter_advisor",
 )
-
 q = st.text_input("Search by first or last name", placeholder="Type to filter: e.g., John, Smith, Alvarez")
 
 def _lead_label(l: dict) -> str:
     return f"{l.get('name','')} ({l.get('id','')}) — {l.get('city','')} — {l.get('assigned_to') or 'Unassigned'}"
 
-# apply filters
 filtered = []
 for l in leads:
     if advisor_filter != "All advisors" and (l.get("assigned_to") or "Unassigned") != advisor_filter:
@@ -69,11 +36,9 @@ for l in leads:
             continue
     filtered.append(l)
 
-# if nothing, show all to avoid empty page during demos
 if not filtered and not q and advisor_filter == "All advisors":
     filtered = leads
 
-# selection
 lead_id_current = store.get_selected_lead_id()
 options = [_lead_label(l) for l in filtered] or ["— no clients —"]
 idx_default = 0
@@ -90,24 +55,21 @@ sel = st.selectbox(
     key="client_record_match_select",
 )
 
-# sync selected lead in store
 if filtered:
     selected = filtered[options.index(sel)]
     store.set_selected_lead(selected.get("id"))
 
 lead = store.get_lead(store.get_selected_lead_id()) if store.get_selected_lead_id() else (filtered[0] if filtered else None)
-st.session_state["_lead_obj"] = lead  # make accessible to callbacks
+st.session_state["_lead_obj"] = lead
 
 if not lead:
     st.info("No matching clients. Adjust filters above.")
     st.stop()
 
-# origin banner (demo-friendly copy)
 origin = lead.get("origin", "App")
 created_on = datetime.date.today().isoformat()
 st.success(f"Origin: {str(origin).title()} — Guided Care Plan completed on {created_on}")
 
-# header row
 c1, c2, c3, c4 = st.columns([2,1,1,1])
 with c1:
     st.subheader(lead.get("name",""))
@@ -124,16 +86,12 @@ with c4:
 
 st.divider()
 
-# --------- Info + Next Steps ---------
 lc1, lc2 = st.columns([2,2])
 with lc1:
     st.subheader("Info from App")
     st.write(f"**Care Preference:** {lead.get('preference','—')}")
     budget = lead.get("budget", 0)
-    if budget:
-        st.write(f"**Budget:** ${int(budget):,}/month")
-    else:
-        st.write("**Budget:** —")
+    st.write(f"**Budget:** " + (f"${int(budget):,}/month" if budget else "—"))
     st.write(f"**Timeline:** {lead.get('timeline','—')}")
     if lead.get("notes"):
         st.write(f"**Notes:** {lead.get('notes')}")
@@ -146,29 +104,28 @@ with lc2:
 
 st.divider()
 
-# --------- Decision Support + Actions ---------
 st.subheader("Decision Support")
 dsr = lead.get("ds_recommendation") or lead.get("preference") or "—"
 dsc = lead.get("ds_est_cost")
 cost_str = f"${int(dsc):,} / month" if isinstance(dsc, (int, float)) and dsc > 0 else "—"
-
 st.write(f"**Recommended:** {dsr}")
 st.write(f"**Estimated cost:** {cost_str}")
 
-btns = st.columns([1,1,2,6])
-
+btns = st.columns([1,1,1,6])
 me = getattr(store, "CURRENT_USER", "Current Advisor")
 already_mine = (lead.get("assigned_to") == me)
+intake_done = bool(lead.get("intake_completed"))
+
+def _assign_to_me():
+    if lead.get("assigned_to") != me:
+        lead["assigned_to"] = me
+        store.upsert_lead(lead)
+        st.success(f"Assigned to {me}")
+        st.rerun()
 
 with btns[0]:
-    st.button(
-        "Assign to me",
-        on_click=_assign_to_me,
-        disabled=already_mine,
-        key="assign_to_me_btn",
-    )
+    st.button("Assign to me", on_click=_assign_to_me, disabled=already_mine, key="assign_to_me_btn")
 
-# Use button return (no callback) to safely navigate without the rerun-in-callback warning
 with btns[1]:
     if st.button("Start Intake", key="start_intake_btn", disabled=not already_mine):
         if lead and lead.get("id"):
@@ -180,7 +137,6 @@ with btns[1]:
             st.rerun()
 
 with btns[2]:
-    intake_done = bool(lead.get("intake_completed"))
     if st.button("Open Placement Workflow", key="open_placement_btn", disabled=not intake_done):
         if lead and lead.get("id"):
             store.set_selected_lead(lead["id"])
@@ -191,3 +147,9 @@ with btns[2]:
             st.rerun()
 
 st.caption("After tours, log results here and the pipeline will advance automatically.")
+
+try:
+    from Workflows.Intake.ui_intake_progress import intake_progress_ui
+    intake_progress_ui(lead, title="Intake Progress")
+except Exception:
+    pass
