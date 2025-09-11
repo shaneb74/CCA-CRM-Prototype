@@ -1,3 +1,4 @@
+
 # Workflows/Intake/progress.py
 from __future__ import annotations
 import streamlit as st
@@ -37,14 +38,16 @@ def progress_fraction(lead_id: str) -> float:
     done = sum(1 for k,_ in MILESTONES if s.get(k))
     return max(0.0, min(1.0, done/total))
 
-def _render_stepper(status: dict):
-    css = """
+def _render_stepper(status: dict, compact: bool=False):
+    size = "11px" if compact else "12px"
+    pad = ".15rem .5rem" if compact else ".25rem .6rem"
+    css = f"""
     <style>
-      .stepper{display:flex;gap:.5rem;flex-wrap:wrap;margin:.5rem 0 0;}
-      .pill{font-size:12px;border-radius:999px;padding:.25rem .6rem;border:1px solid #e5e7eb;color:#6b7280;background:#f9fafb}
-      .pill.done{background:#10b98110;border-color:#34d399;color:#065f46}
-      .pill .dot{display:inline-block;width:.5rem;height:.5rem;border-radius:50%;background:#d1d5db;margin-right:.35rem;vertical-align:middle}
-      .pill.done .dot{background:#10b981}
+      .stepper{{display:flex;gap:.5rem;flex-wrap:wrap;margin:.3rem 0 0;}}
+      .pill{{font-size:{size};border-radius:999px;padding:{pad};border:1px solid #e5e7eb;color:#6b7280;background:#f9fafb}}
+      .pill.done{{background:#10b98110;border-color:#34d399;color:#065f46}}
+      .pill .dot{{display:inline-block;width:.5rem;height:.5rem;border-radius:50%;background:#d1d5db;margin-right:.35rem;vertical-align:middle}}
+      .pill.done .dot{{background:#10b981}}
     </style>
     """
     st.markdown(css, unsafe_allow_html=True)
@@ -55,27 +58,44 @@ def _render_stepper(status: dict):
     html.append("</div>")
     st.markdown("".join(html), unsafe_allow_html=True)
 
-def show_intake_progress(lead: dict, title: str="Intake progress"):
+def show_intake_summary(lead: dict, title: str="Intake status"):
+    """Compact, read-only summary for Case Overview."""
     if not lead:
         return
     lead_id = lead.get("id") or "UNKNOWN"
     _ensure_state(lead_id)
     s = get_status(lead_id)
     pct = progress_fraction(lead_id)
-
     st.subheader(title)
     st.progress(pct)
+    _render_stepper(s, compact=True)
 
-    _render_stepper(s)
+def show_intake_progress(lead: dict, title: str="Intake progress", show_demo_controls: bool=True):
+    """
+    Full widget for the Intake Workflow page. Optionally show demo controls.
+    """
+    if not lead:
+        return
+    lead_id = lead.get("id") or "UNKNOWN"
+    _ensure_state(lead_id)
+    s = get_status(lead_id)
+    pct = progress_fraction(lead_id)
+    st.subheader(title)
+    st.progress(pct)
+    _render_stepper(s, compact=False)
+
+    if not show_demo_controls:
+        return
 
     with st.expander("Update milestones (demo controls)"):
         cols = st.columns(2)
         left = [m for i,m in enumerate(MILESTONES) if i%2==0]
         right = [m for i,m in enumerate(MILESTONES) if i%2==1]
-        for k,label in left:
-            v = st.checkbox(label, value=s.get(k,False), key=f"ck_{lead_id}_{k}")
-            if v != s.get(k):
-                set_step(lead_id, k, v)
+        with cols[0]:
+            for k,label in left:
+                v = st.checkbox(label, value=s.get(k,False), key=f"ck_{lead_id}_{k}")
+                if v != s.get(k):
+                    set_step(lead_id, k, v)
         with cols[1]:
             for k,label in right:
                 v = st.checkbox(label, value=s.get(k,False), key=f"ck_{lead_id}_{k}")

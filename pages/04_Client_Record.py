@@ -1,3 +1,4 @@
+
 # pages/04_Client_Record.py
 from __future__ import annotations
 import datetime
@@ -11,13 +12,11 @@ except Exception:
 
 import store
 
-# Intake progress
+# Intake summary only (read-only)
 try:
-    from Workflows.Intake.progress import show_intake_progress
-    _intake_loaded = True
+    from Workflows.Intake.progress import show_intake_summary
 except Exception:
-    show_intake_progress = None
-    _intake_loaded = False
+    show_intake_summary = None
 
 def _switch_page_hard(path: str):
     try:
@@ -125,9 +124,12 @@ with c4:
     st.caption("Lead ID")
     st.write(lead.get("id","—"))
 
-# Intake progress (and a tiny proof-of-life caption)
-if show_intake_progress:
-    show_intake_progress(lead)
+# Intake SUMMARY (read-only) with a single CTA into the workflow
+if show_intake_summary:
+    show_intake_summary(lead)
+    cta_cols = st.columns([1,4])
+    with cta_cols[0]:
+        st.button("Open Intake Workflow", on_click=_open_intake, key="open_intake_from_summary")
 else:
     st.caption("Intake progress module not found (Workflows/Intake/progress.py).")
 

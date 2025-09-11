@@ -1,3 +1,4 @@
+
 # pages/90_Intake_Workflow.py
 import streamlit as st
 import store
@@ -8,10 +9,12 @@ try:
 except Exception:
     pass
 
+# Full workflow widget (with demo controls visible here)
 try:
-    from Workflows.Intake.progress import set_step
+    from Workflows.Intake.progress import set_step, show_intake_progress
 except Exception:
     def set_step(*args, **kwargs): pass
+    def show_intake_progress(*args, **kwargs): pass
 
 store.init()
 lead_id = store.get_selected_lead_id()
@@ -23,6 +26,9 @@ if not lead:
     st.stop()
 
 st.caption(f"{lead.get('name','')} • {lead.get('city','')} • Assigned: {lead.get('assigned_to') or 'Unassigned'}")
+
+# Show full progress with controls
+show_intake_progress(lead, title="Intake progress", show_demo_controls=True)
 
 with st.container(border=True):
     st.subheader("Client Details")
