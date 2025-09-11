@@ -1,119 +1,107 @@
-# pages/90_Intake_Workflow.py
-import streamlit as st
-from datetime import datetime, time, date
-import store
 
+# pages/90_Intake_Workflow.py
+# Intake workflow page using Workflows/Intake/progress helpers
+
+from __future__ import annotations
+import streamlit as st
+import datetime as dt
+
+# optional chrome (safe if missing)
 try:
-    from ui_chrome import apply_chrome
-    apply_chrome()
+    from ui_chrome import apply_chrome as _apply_chrome
+    _apply_chrome()
 except Exception:
     pass
 
-# Full workflow helpers
-try:
-    from Workflows.Intake.progress import (
-        show_intake_progress, set_step, get_data, log_contact_attempt
-    )
-except Exception:
-    def show_intake_progress(*a, **k): pass
-    def set_step(*a, **k): pass
-    def get_data(*a, **k): return {}
-    def log_contact_attempt(*a, **k): pass
+import store
+from Workflows.Intake import progress as ip
 
+st.set_page_config(page_title="Intake Workflow", page_icon="🧭", layout="wide")
 store.init()
+
+# guard: need a selected lead
 lead_id = store.get_selected_lead_id()
 lead = store.get_lead(lead_id) if lead_id else None
 
 st.title("Intake Workflow")
+
 if not lead:
-    st.info("No client selected. Use Client Record or the Workflows hub.")
+    st.info("Select a client in Client Record first.")
     st.stop()
 
-st.caption(f"{lead.get('name','')} • {lead.get('city','')} • Assigned: {lead.get('assigned_to') or 'Unassigned'}")
+# --- client context summary (compact) ---
+ip.show_intake_summary(lead)
 
-# Top progress
-show_intake_progress(lead, title="Intake progress", show_demo_controls=False)
+# --- progress header with spacing ---
+ip.show_intake_progress(lead)
 
-# ---------- Milestone forms (prototype) ----------
-
-# Lead Assigned (auto when supervisor assigns; read-only note here)
+# --------- Milestone sections ----------
+# 01 Lead assigned (simple toggle for prototype)
 with st.expander("Lead assigned", expanded=False):
-    st.caption("This milestone is auto-completed when a supervisor assigns the lead to an advisor.")
+    assigned = lead.get("assigned_to")
+    st.write(f"Assigned to: **{assigned or 'Unassigned'}**")
+    auto_assign = st.checkbox("Mark as assigned to me", value=False, key="intake_mark_assigned")
+    if auto_assign:
+        me = getattr(store, "CURRENT_USER", "Current Advisor")
+        if assigned != me:
+            lead["assigned_to"] = me
+            store.upsert_lead(lead)
+            ip.set_status(lead["id"], "lead_assigned", True)
+            st.success(f"Assigned to {me}")
+            st.experimental_rerun()
 
-# Initial Contact Attempted — WORKING FORM
-with st.expander("Initial contact attempted", expanded=True):
-    st.write("Log at least one attempt to satisfy this milestone.")
-    col1, col2 = st.columns([1,1])
-    with col1:
-        d = st.date_input("Attempt date", value=date.today(), key="ica_date")
-        t = st.time_input("Attempt time", value=datetime.now().time().replace(microsecond=0), key="ica_time")
-    with col2:
-        channel = st.selectbox("Channel", ["Phone", "Email", "SMS", "Other"], key="ica_channel")
-        notes = st.text_input("Notes (optional)", key="ica_notes")
-    if st.button("Save attempt", type="primary", key="btn_save_attempt"):
-        try:
-            ts = datetime.combine(d, t)
-            log_contact_attempt(lead["id"], ts, channel, notes)
-            st.success("Attempt logged. Milestone marked complete.")
-        except Exception as e:
-            st.error(f"Could not log attempt: {e}")
+# 02 Initial contact attempted (data-backed example)
+with st.expander("Initial contact attempted", expanded=False):
+    c1, c2 = st.columns([1,2])
+    with c1:
+        when = st.datetime_input("When", value=dt.datetime.now(), key="ica_when")
+        channel = st.selectbox("Channel", ["Phone", "Email", "SMS", "In person"], key="ica_channel")
+    with c2:
+        notes = st.text_area("Notes", height=96, key="ica_notes", placeholder="Voicemail, spoke with daughter, etc.")
+    if st.button("Save attempt", key="save_attempt_btn"):
+        ip.log_contact_attempt(lead["id"], when, channel, notes)
+        st.success("Logged contact attempt and marked milestone complete.")
+        st.experimental_rerun()
 
-    # show recent attempts
-    try:
-        data = get_data(lead["id"])
-        attempts = data.get("initial_contact_attempts", [])[-5:]
-        if attempts:
-            st.write("Recent attempts:")
-            for a in reversed(attempts):
-                st.write(f"• {a['ts']} — {a['channel']}: {a.get('notes','')}")
-        else:
-            st.caption("No attempts yet.")
-    except Exception:
-        pass
+    attempts = ip.get_data(lead["id"]).get("contact_attempts", [])
+    if attempts:
+        st.caption("Recent attempts")
+        for a in reversed(attempts[-5:]):
+            st.write(f"- {a['ts']} • {a['channel']} — {a.get('notes','')}")
 
-# Initial Contact Made — placeholder
+# 03 Initial contact made (placeholder for now)
 with st.expander("Initial contact made", expanded=False):
-    st.caption("Prototype placeholder. This will capture successful connection details.")
-    disabled = True
-    st.text_input("Connected with (name)", disabled=disabled, key="icm_name")
-    st.text_area("Call notes", disabled=disabled, key="icm_notes")
-    st.button("Mark contact made", disabled=disabled, key="btn_mark_icm")
+    st.caption("Prototype placeholder")
+    st.write("Capture who you spoke with and summary; save will mark milestone complete.")
 
-# Consultation Scheduled — placeholder
+# 04 Consultation scheduled (placeholder)
 with st.expander("Consultation scheduled", expanded=False):
-    st.caption("Prototype placeholder. Will capture appointment date/time and participants.")
-    st.button("Save consultation", disabled=True)
+    st.caption("Prototype placeholder")
+    st.write("Add a date/time and location/Zoom; saving would mark milestone complete.")
 
-# Assessment Started — placeholder
+# 05 Assessment started (placeholder)
 with st.expander("Assessment started", expanded=False):
-    st.caption("Prototype placeholder. Will record who started which tool and when.")
-    st.button("Mark started", disabled=True)
+    st.caption("Prototype placeholder")
+    st.write("Starting Care Planner + Cost Calculator can set this automatically.")
 
-# Assessment Completed — placeholder
+# 06 Assessment completed (placeholder)
 with st.expander("Assessment completed", expanded=False):
-    st.caption("Prototype placeholder. Will require all sections complete, then allow mark complete.")
-    st.button("Mark completed", disabled=True)
+    st.caption("Prototype placeholder")
+    st.write("Require key sections complete before marking done.")
 
-# Qualification Decision — placeholder
+# 07 Qualification decision (placeholder)
 with st.expander("Qualification decision", expanded=False):
-    st.caption("Prototype placeholder. Will capture outcome (Pass/Defer/Decline) and reason.")
-    st.button("Save decision", disabled=True)
+    st.caption("Prototype placeholder")
+    st.write("Qualified, Deferred, or Declined with reason codes.")
 
-st.divider()
-
-# Existing primary action stays
-if st.button("Complete Intake → Start Placement", type="secondary"):
-    if lead and lead.get("id"):
-        set_step(lead["id"], "assessment_started", True)
-        set_step(lead["id"], "assessment_completed", True)
-        set_step(lead["id"], "qualified", True)
-        l = store.get_lead(lead["id"])
-        if l is not None:
-            l["intake_complete"] = True
-            store.upsert_lead(l)
+st.markdown("---")
+c1, c2 = st.columns([1,1])
+with c1:
+    if st.button("Complete Intake → Start Placement", type="primary"):
+        ip.set_status(lead["id"], "assessment_completed", True)
+        ip.set_status(lead["id"], "qualified_decision", True)
+        # schedule redirect
         st.session_state["_goto_page"] = "pages/91_Placement_Workflow.py"
-        st.rerun()
-
-if st.button("↩ Back to Workflows"):
-    st.session_state["_goto_page"] = "pages/89_Workflows.py"
-    st.rerun()
+        st.experimental_rerun()
+with c2:
+    st.link_button("↩︎ Back to Workflows", "pages/89_Workflows.py")
