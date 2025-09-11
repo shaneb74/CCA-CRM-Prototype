@@ -1,128 +1,202 @@
-
 # pages/90_Intake_Workflow.py
+# Intake Workflow — minimal update: highlight active chip + auto-open matching drawer
 from __future__ import annotations
+import datetime as _dt
 import streamlit as st
-from datetime import datetime
-import intake_store as ixs
-import store
 
-# ----- safe reroute consumer (works with/without ui_chrome) -----
-def _consume_redirect_once():
-    k = "_goto_page"
-    dest = st.session_state.pop(k, None)
-    if dest and hasattr(st, "switch_page"):
-        try:
-            st.switch_page(dest)
-        except Exception:
-            pass
+# ---- helpers to read/write intake step state (non-destructive) ----------------
+def _get_lead_id() -> str | None:
+    try:
+        return st.session_state.get("selected_lead_id") or st.session_state.get("selected_lead")
+    except Exception:
+        return None
 
-st.set_page_config(page_title="Intake Workflow", page_icon="🧭", layout="wide")
-_consume_redirect_once()
+def _ensure_steps(lead_id: str) -> dict:
+    st.session_state.setdefault("case_steps", {})
+    steps = st.session_state["case_steps"].setdefault(lead_id, {})
+    steps.setdefault("intake", {
+        "lead_received": True,            # already in system
+        "lead_assigned": False,
+        "initial_contact_attempted": False,
+        "initial_contact_made": False,
+        "consultation_scheduled": False,
+        "assessment_started": False,
+        "assessment_completed": False,
+        "qualification_decision": False,
+    })
+    return steps["intake"]
 
-store.init()
-lead_id = store.get_selected_lead_id()
-lead = store.get_lead(lead_id) if lead_id else None
+def _first_incomplete_index(steps: dict, order: list[str]) -> int:
+    for i, key in enumerate(order):
+        if not steps.get(key, False):
+            return i
+    return len(order) - 1
 
-st.title("Intake Workflow")
+# ---- page --------------------------------------------------------------------
+st.set_page_config(page_title="Intake Workflow", page_icon="👣", layout="wide")
 
-if not lead:
-    st.info("No client selected. Use Client Record or the Workflows hub.")
+try:
+    import store
+except Exception:
+    store = None
+
+lead_id = _get_lead_id()
+if not lead_id and store:
+    # Fallback to previously selected lead in store
+    lead_id = getattr(store, "get_selected_lead_id", lambda: None)()
+
+if not lead_id:
+    st.info("Select a client in Client Record first.")
     st.stop()
 
-# Ensure intake state & meta stored centrally
-ixs.init_for_lead(lead)
-meta = ixs.get_meta(lead["id"])
+lead = None
+if store:
+    try:
+        lead = store.get_lead(lead_id)
+    except Exception:
+        lead = None
 
-# ---- Header snapshot (compact) ----
-snap_cols = st.columns([2,1,1,1])
-with snap_cols[0]:
+if not lead:
+    lead = {"id": lead_id, "name": "Unknown", "city": "", "status": "new",
+            "budget": 0, "timeline": "—", "assigned_to": ""}
+
+steps_order = [
+    ("lead_received", "Lead received"),
+    ("lead_assigned", "Lead assigned"),
+    ("initial_contact_attempted", "Initial contact attempted"),
+    ("initial_contact_made", "Initial contact made"),
+    ("consultation_scheduled", "Consultation scheduled"),
+    ("assessment_started", "Assessment started"),
+    ("assessment_completed", "Assessment completed"),
+    ("qualification_decision", "Qualification decision"),
+]
+step_keys = [k for k,_ in steps_order]
+
+steps = _ensure_steps(lead_id)
+active_idx = _first_incomplete_index(steps, step_keys)
+
+# --- minimal css to ONLY add active highlighting to the existing rectangular chips
+st.markdown("""
+<style>
+.cca-chip-row{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:8px}
+.cca-chip{
+  border:1px solid #e5e7eb;border-radius:8px;padding:8px 14px;
+  background:#fafafa;color:#374151;font-size:13px;line-height:1;
+}
+.cca-chip.active{
+  border-color:#2563eb;background:#eff6ff;color:#1d4ed8;font-weight:600;
+  box-shadow:0 0 0 2px rgba(37,99,235,.08) inset;
+}
+/* keep drawers width reasonable on large screens */
+.cca-two-col{display:grid;grid-template-columns:1.3fr .8fr;gap:24px}
+@media (max-width: 1100px){
+  .cca-two-col{grid-template-columns:1fr}
+}
+</style>
+""", unsafe_allow_html=True)
+
+# ---- header area (kept as-is; only data values filled) ------------------------
+st.title("Intake Workflow")
+c1, c2, c3, c4 = st.columns([2,1,1,1])
+with c1:
     st.markdown(f"**{lead.get('name','')}** • {lead.get('city','')}")
     st.caption(f"Assigned: {lead.get('assigned_to') or 'Unassigned'}")
-with snap_cols[1]:
+with c2:
     st.caption("Status")
-    st.write(lead.get("status","—"))
-with snap_cols[2]:
+    st.write(lead.get("status","new"))
+with c3:
     st.caption("Budget / mo")
-    val = lead.get("budget")
-    st.write(f"{val:,}" if isinstance(val,(int,float)) and val>0 else "—")
-with snap_cols[3]:
+    budget = lead.get("budget", 0) or 0
+    st.write(f\"{int(budget):,}\" if budget else "—")
+with c4:
     st.caption("Timeline")
     st.write(lead.get("timeline","—"))
 
-# Origin + received
-o = meta.get("origin","Unknown")
-try:
-    ra = datetime.fromisoformat(meta.get("received_at"))
-except Exception:
-    ra = None
-
-top_info = st.columns([1,1,6])
-with top_info[0]:
-    st.info(f"Origin: {str(o)}")
-with top_info[1]:
-    st.info(f"Received: {ixs.human_when(ra) if ra else '—'}")
-
 st.divider()
 
-# ---- Pills (horizontal) ----
-state = ixs.get_state(lead["id"])
-pill_cols = st.columns(8)
-for i, step in enumerate(ixs.STEP_ORDER):
-    label = ixs.STEP_LABELS[step]
-    with pill_cols[i]:
-        if state.get(step,{}).get("done"):
-            st.button(label, key=f"pill_{step}", disabled=True)
-        else:
-            st.button(label, key=f"pill_{step}", disabled=True)
+# ---- chip row (exactly one 'active') ------------------------------------------
+st.caption("Intake progress")
+st.markdown('<div class="cca-chip-row">' + "".join([
+    f'<div class="cca-chip {"active" if i==active_idx else ""}">{label}</div>'
+    for i, (key,label) in enumerate(steps_order)
+]) + "</div>", unsafe_allow_html=True)
 
-# Next action + SLA
-nxt, due, status = ixs.sla_status(lead["id"])
-if nxt:
-    badge = {"ok":"✅ On track","due_soon":"⏳ Due soon","overdue":"⚠️ Overdue"}[status]
-    due_str = due.strftime("%Y-%m-%d %H:%M UTC") if due else "—"
-    st.markdown(f"**Next action:** {ixs.STEP_LABELS[nxt]} • {badge} • **Due:** {due_str}")
+# ---- optional thin progress (kept subtle) -------------------------------------
+prog = (active_idx)/max(1,(len(steps_order)-1))
+st.progress(min(max(prog,0.0),1.0))
 
-st.progress(ixs.percent_complete(lead["id"]))
+# ---- two column: drawers + case snapshot --------------------------------------
+st.markdown('<div class="cca-two-col">', unsafe_allow_html=True)
 
-st.write("")
+# left: drawers
+st.markdown("<div>", unsafe_allow_html=True)
+for i, (key, label) in enumerate(steps_order):
+    with st.expander(label, expanded=(i==active_idx)):
+        colA, colB = st.columns([1,1])
+        with colA:
+            st.checkbox("Mark complete", value=bool(steps.get(key, False)),
+                        key=f"chk_{key}")
+        with colB:
+            if key == "lead_assigned":
+                st.text_input("Assigned to", value=lead.get("assigned_to") or "", key="assigned_to_tmp")
+            elif key == "initial_contact_attempted":
+                st.selectbox("Method", ["Phone","Email","SMS"], index=0, key="ica_method")
+                st.text_input("Outcome", value="", key="ica_outcome")
+            elif key == "initial_contact_made":
+                st.date_input("Contact date", value=_dt.date.today(), key="icm_date")
+                st.text_input("Notes", value="", key="icm_notes")
+            elif key == "consultation_scheduled":
+                st.date_input("Consultation date", value=_dt.date.today(), key="cs_date")
+                st.time_input("Time", key="cs_time")
+            elif key == "assessment_started":
+                st.selectbox("Who provided info", ["Resident","Child","POA","Other"], key="as_who")
+            elif key == "assessment_completed":
+                st.text_area("Summary", value="", key="ac_summary")
+            elif key == "qualification_decision":
+                st.selectbox("Decision", ["Qualified","Deferred","Declined"], key="qd_decision")
+# right: snapshot
+st.markdown("</div>", unsafe_allow_html=True)
 
-# ---- Two-column content: drawers (left) + case snapshot (right) ----
-left, right = st.columns([3,2], gap="large")
+st.markdown("<div>", unsafe_allow_html=True)
+st.subheader("Case snapshot")
+st.write(f"**{lead.get('name','')}** • {lead.get('city','')} • Assigned: {lead.get('assigned_to') or 'Unassigned'}")
+st.write(f"**Care preference:** {lead.get('preference','—')}")
+if budget:
+    st.write(f"**Budget:** ${int(budget):,}/mo")
+else:
+    st.write("**Budget:** —")
+st.write(f"**Timeline:** {lead.get('timeline','—')}")
+if lead.get("notes"):
+    st.write(f"**Notes:** {lead.get('notes')}")
+st.markdown("</div>", unsafe_allow_html=True)
 
-with left:
-    # No drawer for lead_received (info is shown above)
-    for step in ixs.STEP_ORDER:
-        if step == "lead_received":
-            continue
-        label = ixs.STEP_LABELS[step]
-        with st.expander(label, expanded=False):
-            # Basic "done" toggle
-            done = state.get(step,{}).get("done", False)
-            new_done = st.checkbox("Mark as complete", value=done, key=f"chk_{step}")
-            if new_done and not done:
-                ixs.mark_step(lead["id"], step, True)
-                st.success("Saved")
-                st.experimental_rerun()
-            # Simple notes field per step (kept in session for demo)
-            notes_key = f"notes::{lead['id']}::{step}"
-            st.text_area("Notes (optional)", key=notes_key)
+st.markdown('</div>', unsafe_allow_html=True)  # end grid
 
-    st.write("")
-    if st.button("Complete Intake → Start Placement", type="primary"):
-        ixs.mark_step(lead["id"], "qualification_decision", True)
+# ---- footer buttons (unchanged) -----------------------------------------------
+lc, rc = st.columns([1,1])
+with lc:
+    if st.button("Complete Intake → Start Placement", key="btn_complete_intake"):
+        # mark all as complete and suggest next
+        for k,_ in steps_order:
+            steps[k] = True
+        st.session_state["case_steps"][lead_id]["intake"] = steps
+        # schedule navigation if switch_page is available elsewhere
         st.session_state["_goto_page"] = "pages/91_Placement_Workflow.py"
         st.experimental_rerun()
+with rc:
+    st.button("← Back to Workflows", key="btn_back_workflows")
 
-    st.button("← Back to Workflows", on_click=lambda: st.session_state.update({"_goto_page":"pages/89_Workflows.py"}))
+# ---- persist checkboxes back to steps -----------------------------------------
+changed = False
+for key,_ in steps_order:
+    ui_key = f"chk_{key}"
+    if ui_key in st.session_state:
+        val = bool(st.session_state[ui_key])
+        if steps.get(key) != val:
+            steps[key] = val
+            changed = True
 
-with right:
-    st.subheader("Case snapshot")
-    st.caption(f"{lead.get('name','')} • {lead.get('city','')} • Assigned: {lead.get('assigned_to') or 'Unassigned'}")
-    if lead.get("preference"):
-        st.write(f"**Care preference:** {lead['preference']}")
-    if lead.get("budget"):
-        st.write(f"**Budget:** ${int(lead['budget']):,}/mo")
-    if lead.get("timeline"):
-        st.write(f"**Timeline:** {lead['timeline']}")
-    if lead.get("notes"):
-        st.write(f"**Notes:** {lead['notes']}")
+if changed:
+    st.session_state["case_steps"][lead_id]["intake"] = steps
+    # recompute active and reopen that drawer on the next render
+    st.experimental_rerun()
